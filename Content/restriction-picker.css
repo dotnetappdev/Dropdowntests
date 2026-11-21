@@ -1,41 +1,47 @@
-/* Content/restriction-picker.css (no-JavaScript version) */
+/* Content/restriction-picker.css (no-JavaScript version)
+   Matches the light theme of the Visual Studio Web Forms template (Bootstrap 5). */
 
-/* Grid: one Notes column, scrolls inside its box, header stays at the top */
+/* Grid: one Notes column. The GridView uses Bootstrap's "table table-striped" classes;
+   these rules add scrolling inside its box, a header that stays at the top, and wrapping notes. */
 .grid-box { overflow: auto; max-height: 440px; }
-.gv { border-collapse: separate; border-spacing: 0; min-width: 100%; }
-.gv th, .gv td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #ccc; vertical-align: top; }
-.gv th { position: sticky; top: 0; background: #fff; }
+.grid-box .table { margin-bottom: 0; }
+.gv th { position: sticky; top: 0; z-index: 1; background-color: #fff; box-shadow: inset 0 -2px 0 #dee2e6; }
 .gv td.notes { width: 100%; min-width: 260px; }
-.gv .rname { font-weight: bold; }
+.gv .rname { font-weight: 600; }
 .gv .ntext { white-space: pre-line; max-width: 75ch; }
-.gv td.notes textarea { width: 100%; min-width: 260px; box-sizing: border-box; resize: vertical; }
+.gv td.notes textarea { min-width: 260px; min-height: 6rem; resize: vertical; }
+.gv td { white-space: nowrap; }
+.gv td.notes { white-space: normal; }
 
-/* Restriction picker. The browser's popover feature shows and hides it (no JavaScript).
-   A popover sits in the browser's top layer, so it is always above the rest of the page
-   whatever z-index or transform your other elements use. Every rule is scoped to .rp-overlay. */
-.rp-overlay { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none;
-  margin: 0; padding: 0; border: 0; background: #fff; color: #222;
-  font: 16px/1.5 system-ui, "Segoe UI", Arial, sans-serif; text-align: left; }
+/* Restriction picker in Bootstrap 5's default light theme. Buttons use Bootstrap's own
+   .btn classes; every other rule is scoped to .rp-overlay so nothing else is restyled. */
+.rp-overlay { background-color: #fff; color: #212529; font-size: 1rem; line-height: 1.5; text-align: left; }
+.rp-overlay * { box-sizing: border-box; }
+.rp-overlay .rp-head { padding: 1rem; border-bottom: 1px solid #dee2e6; }
+.rp-overlay .rp-title { margin: 0; font-size: 1.25rem; font-weight: 500; line-height: 1.2; }
+.rp-overlay .rp-sub { margin-top: .25rem; font-size: .875rem; color: #6c757d; }
+.rp-overlay .rp-body { flex: 1; min-height: 0; overflow: auto; }
+.rp-overlay .rp-group { padding: .75rem 1rem .375rem; font-size: .75rem; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: #6c757d; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+.rp-overlay .rp-item { display: flex; gap: .75rem; align-items: flex-start; margin: 0; padding: .75rem 1rem;
+  border-bottom: 1px solid #dee2e6; cursor: pointer; font-weight: 400; }
+.rp-overlay .rp-item:hover { background-color: #f8f9fa; }
+.rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; accent-color: #0d6efd; }
+.rp-overlay .rp-item input:focus-visible { outline: 0; box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25); }
+.rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
+.rp-overlay .rp-name { display: block; }
+.rp-overlay .rp-desc { display: block; margin: .25rem 0 0; font-size: .875rem; color: #6c757d; }
+.rp-overlay .rp-tag { display: inline-block; margin-top: .25rem; padding: .35em .65em; font-size: .75em; font-weight: 700;
+  line-height: 1; color: #fff; background-color: #6c757d; border-radius: .375rem; }
+.rp-overlay .rp-bar { display: flex; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #fff; }
+.rp-overlay .rp-bar .btn { flex: 1; padding-top: .625rem; padding-bottom: .625rem; }
+
+/* The browser's popover feature shows and hides the picker (no JavaScript). A popover sits
+   in the browser's top layer, above the rest of the page whatever z-index or transform is used. */
+.rp-overlay { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; }
 .rp-overlay:popover-open { display: flex; flex-direction: column; }
 html:has(.rp-overlay:popover-open) { overflow: hidden; }   /* page behind doesn't scroll */
-.rp-overlay * { box-sizing: border-box; }
-.rp-overlay .rp-head { padding: 16px; border-bottom: 1px solid #ccc; }
-.rp-overlay .rp-title { font-size: 18px; font-weight: bold; }
-.rp-overlay .rp-sub { font-size: 13px; color: #666; }
-.rp-overlay .rp-body { flex: 1; min-height: 0; overflow: auto; }
-.rp-overlay .rp-group { padding: 16px 16px 6px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #666; }
-.rp-overlay .rp-item { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 12px 16px;
-  border-bottom: 1px solid #ddd; cursor: pointer; font-weight: normal; }
-.rp-overlay .rp-item:hover { background: #f0f4fa; }
-.rp-overlay .rp-item:has(input:checked) { background: #eaf1fb; }
-.rp-overlay .rp-item input { flex: none; width: 20px; height: 20px; margin: 3px 0 0; }
-.rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
-.rp-overlay .rp-name { display: block; font-size: 17px; }
-.rp-overlay .rp-desc { display: block; margin-top: 4px; font-size: 15px; color: #555; }
+.rp-overlay .rp-item:has(input:checked) { background-color: #e7f1ff; }
 /* AllowMultiple="false": restrictions already on the route */
-.rp-overlay .rp-item:has(input:disabled) { cursor: default; color: #777; background: none; }
-.rp-overlay .rp-tag { display: block; margin-top: 2px; font-size: 13px; font-weight: bold; color: #555; }
-.rp-overlay .rp-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ccc; }
-.rp-overlay .rp-btn { flex: 1; padding: 14px; font: inherit; border: 1px solid #ccc; border-radius: 4px;
-  background: #fff; color: #222; cursor: pointer; }
-.rp-overlay .rp-primary { background: #1a5fb4; border-color: #1a5fb4; color: #fff; }
+.rp-overlay .rp-item:has(input:disabled) { cursor: default; opacity: .65; }
+.rp-overlay .rp-item:has(input:disabled):hover { background-color: transparent; }
