@@ -1,12 +1,16 @@
 /* Scripts/restriction-picker.js
    Full-screen list for the restriction dropdowns, so long descriptions are readable on any screen.
 
-   1. A dropdown list in a GridView row (an ordinary asp:DropDownList, filled in C#):
-        <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
-            onmousedown="return RestrictionPicker.selectDown(this, event)"
-            ontouchend="return RestrictionPicker.selectDown(this, event)"
-            onkeydown="return RestrictionPicker.selectKey(this, event)" />
-      Clicking or tapping it opens the full-screen list instead of the browser's own popup.
+   1. A dropdown list in a GridView row (an ordinary asp:DropDownList, filled in C#), with an
+      invisible button over it so a tap never opens the phone's own picker:
+        <span style="position:relative;display:block">
+          <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+              onkeydown="return RestrictionPicker.selectKey(this, event)" />
+          <button type="button" tabindex="-1" aria-hidden="true" style="position:absolute;top:0;left:0;
+              width:100%;height:100%;opacity:0" onclick="RestrictionPicker.fromSelect(
+              this.parentNode.getElementsByTagName('select')[0])"></button>
+        </span>
+      (RestrictionPicker.selectDown also works as onmousedown / ontouchend on the dropdown itself.)
       It looks and works like the tick list, but only one restriction can be ticked; ticking
       another moves the tick. Update sets the dropdown and presses the row's Update.
       The list's Update and Cancel press the row's own Update and Cancel (links with class

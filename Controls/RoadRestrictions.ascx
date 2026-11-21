@@ -32,11 +32,17 @@
       <EditItemTemplate>
         <%-- The old-style dropdown list, filled in code-behind (RowDataBound). Tapping it opens the
              full-screen list; that list's Update and Cancel press this row's Update and Cancel. --%>
-        <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
-            data-title="Obstruction / restriction"
-            onmousedown="return RestrictionPicker.selectDown(this, event)"
-            ontouchend="return RestrictionPicker.selectDown(this, event)"
-            onkeydown="return RestrictionPicker.selectKey(this, event)" />
+        <%-- An invisible button lies over the dropdown, so a click or tap opens the full-screen list
+             and never the browser's or phone's own picker. The dropdown still posts its value,
+             and with the keyboard Enter, Space or Alt+Down on it opens the list. --%>
+        <span style="position:relative;display:block">
+          <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+              data-title="Obstruction / restriction"
+              onkeydown="return RestrictionPicker.selectKey(this, event)" />
+          <button type="button" tabindex="-1" aria-hidden="true"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer"
+              onclick="RestrictionPicker.fromSelect(this.parentNode.getElementsByTagName('select')[0])"></button>
+        </span>
         <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small" EnableViewState="false" />
         <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4" CssClass="form-control mt-2"
             Text='<%# Bind("Notes") %>' />

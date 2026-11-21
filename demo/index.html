@@ -120,10 +120,12 @@ function render() {
       // RowDataBound: the old-style dropdown list for this row
       var taken = rows.filter(function (x) { return x.Id !== r.Id; }).map(function (x) { return x.TypeId; });
       h += '<tr class="editing"><td class="notes">' +
+        '<span style="position:relative;display:block">' +
         '<select id="ddlRestriction" name="' + GV + '$ctl0' + (i + 2) + '$ddlRestriction" class="form-select" data-title="Obstruction / restriction" ' +
-        'onmousedown="return RestrictionPicker.selectDown(this, event)" ontouchend="return RestrictionPicker.selectDown(this, event)" ' +
         'onkeydown="return RestrictionPicker.selectKey(this, event)">' +
         fillOptions({ selected: [r.TypeId], taken: taken, placeholder: r.Id === 0 }) + '</select>' +
+        '<button type="button" tabindex="-1" aria-hidden="true" style="position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer" ' +
+        'onclick="RestrictionPicker.fromSelect(this.parentNode.getElementsByTagName(\'select\')[0])"></button></span>' +
         '<span id="lblRowError" class="text-danger small"></span>' +
         '<textarea id="txtNotes" rows="4" class="form-control mt-2">' + esc(r.Notes) + '</textarea></td>' +
         '<td><a href="#" class="gv-update me-2" onclick="return post(\'Update$' + i + '\')">Update</a>' +
