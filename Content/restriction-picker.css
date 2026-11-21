@@ -1,0 +1,33 @@
+/* Content/restriction-picker.css */
+
+/* Grid: one Notes column, scrolls inside its box, header stays at the top */
+.grid-box { overflow: auto; max-height: 440px; }
+.gv { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.gv th, .gv td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #ccc; vertical-align: top; }
+.gv th { position: sticky; top: 0; background: #fff; }
+.gv td.notes { width: 100%; min-width: 260px; }
+.gv .rname { font-weight: bold; }
+.gv .ntext { white-space: pre-line; max-width: 75ch; }
+.gv td.notes textarea { width: 100%; min-width: 260px; box-sizing: border-box; resize: vertical; }
+
+/* Restriction picker: every rule is scoped to .rp-overlay */
+.rp-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column;
+  background: #fff; color: #222; font: 16px/1.5 system-ui, "Segoe UI", Arial, sans-serif; text-align: left; }
+.rp-overlay * { box-sizing: border-box; }
+.rp-overlay .rp-head { padding: 16px; border-bottom: 1px solid #ccc; }
+.rp-overlay .rp-title { font-size: 18px; font-weight: bold; }
+.rp-overlay .rp-sub { font-size: 13px; color: #666; }
+.rp-overlay .rp-body { flex: 1; min-height: 0; overflow: auto; }
+.rp-overlay .rp-group { padding: 16px 16px 6px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #666; }
+.rp-overlay .rp-item { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 12px 16px;
+  border-bottom: 1px solid #ddd; cursor: pointer; font-weight: normal; }
+.rp-overlay .rp-item:hover { background: #f0f4fa; }
+.rp-overlay .rp-item.on { background: #eaf1fb; }
+.rp-overlay .rp-item input { flex: none; width: 20px; height: 20px; margin: 3px 0 0; }
+.rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
+.rp-overlay .rp-name { font-size: 17px; }
+.rp-overlay .rp-desc { margin: 4px 0 0; font-size: 15px; color: #555; }
+.rp-overlay .rp-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ccc; }
+.rp-overlay .rp-btn { flex: 1; padding: 14px; font: inherit; border: 1px solid #ccc; border-radius: 4px;
+  background: #fff; color: #222; cursor: pointer; }
+.rp-overlay .rp-primary { background: #1a5fb4; border-color: #1a5fb4; color: #fff; }

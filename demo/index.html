@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restriction Picker Demo</title>
+<!-- The real files from this repo -->
+<link rel="stylesheet" href="../Content/restriction-picker.css">
+<script src="../Scripts/restriction-picker.js"></script>
+<style>
+  /* Demo page only */
+  body { margin: 0; background: #fff; color: #222; font: 15px/1.5 system-ui, "Segoe UI", Arial, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  p { margin: 0; color: #555; max-width: 70ch; }
+  .uc-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .uc-toolbar h3 { margin: 0; font-size: 16px; }
+  .btn-primary { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #1a5fb4; background: #1a5fb4; color: #fff; }
+  .grid-box { border: 1px solid #ccc; border-radius: 4px; }
+  .gv th { font-size: 12px; text-transform: uppercase; color: #666; }
+  .gv a { color: #1a5fb4; font-weight: 600; text-decoration: none; margin-right: 12px; }
+  .gv td.notes textarea { font: inherit; min-height: 90px; }
+  .gv tr.editing td { background: #fffbe6; }
+  #log { background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font: 13px/1.5 Consolas, monospace; white-space: pre-wrap; min-height: 100px; max-height: 260px; overflow: auto; margin: 0; }
+</style>
+</head>
+<body>
+<form id="form1" onsubmit="return false">
+<div class="wrap">
+  <h1>Restriction picker demo</h1>
+  <p>Open this file in a browser. It uses the real <code>restriction-picker.js</code> and <code>restriction-picker.css</code>. The script at the bottom of this page only pretends to be the server, so you can try it without running ASP.NET. The log shows what the code-behind would receive.</p>
+
+  <!-- What RoadRestrictions.ascx renders -->
+  <div class="uc-toolbar">
+    <h3>Route obstructions and restrictions</h3>
+    <button type="button" class="btn-primary"
+      onclick="RestrictionPicker.open('RoadRestrictions1_lstRestrictions', 'RoadRestrictions1_btnSaveRestrictions')">Add restriction</button>
+  </div>
+  <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
+    data-title="Restrictions on this route" style="display:none"></select>
+  <input type="submit" name="RoadRestrictions1$btnSaveRestrictions" id="RoadRestrictions1_btnSaveRestrictions" value="Save" style="display:none">
+  <div class="grid-box"><table class="gv" id="RoadRestrictions1_gvRestrictions"></table></div>
+
+  <h3>Postback log</h3>
+  <pre id="log"></pre>
+</div>
+</form>
+
+<script>
+/* ===== Demo only: a fake server standing in for the code-behind ===== */
+var groups = [
+  ["Height", ["Low bridge", "Overhead power cables", "Overhead telecom cables", "Overhanging trees", "Footbridge", "Gantry / overhead sign", "Height-restricted tunnel"]],
+  ["Width", ["Narrow road", "Width restriction", "Narrow bridge", "Traffic island / central reserve", "Bollards", "Street furniture (signs, lamp posts)", "Parked vehicles", "Road works / barriers"]],
+  ["Weight", ["Weight-restricted bridge", "Weak culvert", "Weight limit on road", "Cellar or void under road"]],
+  ["Length and turning", ["Tight bend", "Hairpin bend", "Small roundabout", "Mini roundabout", "Sharp junction"]],
+  ["Ground clearance", ["Hump-back bridge", "Level crossing", "Speed humps / cushions", "Steep gradient", "Severe camber"]],
+  ["Movement conditions", ["Police escort required", "Time-of-day restriction", "Convoy / low speed only", "Contraflow required", "Toll or barrier"]]
+];
+var descriptions = {
+  "Low bridge": "Any bridge where the headroom is less than the load height plus a safety margin. Check the signed height and the measured height on both carriageways, because headroom often differs between lanes and at the kerb.\n\nIf the load cannot clear the bridge, record the diversion in Notes and confirm it with the highway authority before the movement order is issued.",
+  "Overhead power cables": "Overhead lines cross many rural routes and are usually lowest at mid-span, not at the poles. Measure the lowest point over the carriageway, not the verge.\n\nIf the clearance is below the safe distance for the voltage, the network operator must lift the line or switch it off.",
+  "Weight-restricted bridge": "A structure with a signed or assessed weight limit below the gross weight or axle loads of the movement.\n\nThe structure owner must be notified. They may require the load to cross alone, at walking pace and on the centre line.",
+  "Small roundabout": "The swept path of the vehicle is wider than the roundabout allows.\n\nCommon solutions are overrunning the central island, going the wrong way round under escort, or using rear steer.",
+  "Level crossing": "Low loaders and long vehicles can ground on the crossing or take too long to clear it. Where the crossing has a phone, the driver must call the signaller and get permission before crossing."
+};
+var types = [];
+groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types.length + 1, name: n, group: g[0], desc: descriptions[n] || "" }); }); });
+function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
+function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
+
+var nextId = 1, editIndex = -1;
+var rows = [
+  { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
+  { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
+  { TypeId: idOf("Small roundabout"), Notes: "A449 / Worcester Rd. Overrun the central island with escort holding traffic." }
+];
+rows.forEach(function (r) { r.Id = nextId++; });
+
+var GV = "RoadRestrictions1$gvRestrictions";
+var lst = document.getElementById("RoadRestrictions1_lstRestrictions");
+var logEl = document.getElementById("log");
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function log(s) { logEl.textContent += s + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+
+function render() {
+  // GridView: one Notes column
+  var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
+  rows.forEach(function (r, i) {
+    if (i === editIndex)
+      h += '<tr class="editing"><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><textarea id="txtNotes" rows="4">' + esc(r.Notes) + '</textarea></td>' +
+        '<td><a href="#" onclick="return post(\'Update$' + i + '\')">Update</a><a href="#" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
+    else
+      h += '<tr><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><div class="ntext">' + esc(r.Notes) + '</div></td>' +
+        '<td><a href="#" onclick="return post(\'Edit$' + i + '\')">Edit</a></td></tr>';
+  });
+  document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
+
+  // OnPreRender: source list with group headings, attached ones pre-selected
+  var attached = rows.map(function (r) { return r.TypeId; }), o = '', g = null;
+  types.forEach(function (t) {
+    if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
+    o += '<option value="' + t.id + '"' + (attached.indexOf(t.id) >= 0 ? ' selected' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+  });
+  lst.innerHTML = o;
+}
+
+function post(arg) {
+  var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
+  log("POST " + GV + "  " + arg);
+  if (cmd === "Edit") editIndex = i;
+  if (cmd === "Update") { rows[i].Notes = document.getElementById("txtNotes").value; log("  RowUpdating: notes saved for " + typeName(rows[i].TypeId)); editIndex = -1; }
+  if (cmd === "Cancel") editIndex = -1;
+  render();
+  return false;
+}
+
+// Real app: the hidden asp:Button submits the form. Here it calls the fake server instead.
+document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
+  e.preventDefault();
+  var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
+  log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
+  var attached = rows.map(function (r) { return r.TypeId; });
+  rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
+  rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
+  ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
+  editIndex = -1;
+  render();
+};
+
+render();
+log("GET page loaded");
+</script>
+</body>
+</html>
