@@ -11,6 +11,21 @@ namespace DropdownTests.Controls
         /// <summary>The route whose restrictions are shown. Set by the host page.</summary>
         public int RouteId { get; set; }
 
+        /// <summary>
+        /// true (default): tick several restrictions; Save attaches the ticked ones and detaches the unticked ones.
+        /// false: choose one restriction to add. Restrictions already on the route are shown as "Already added".
+        /// Set it in markup, e.g. &lt;uc:RoadRestrictions runat="server" AllowMultiple="false" /&gt;
+        /// </summary>
+        public bool AllowMultiple { get; set; } = true;
+
+        protected override void OnInit(EventArgs e)
+        {
+            base.OnInit(e);
+            // Set before the posted selection is loaded, so a single list reads one value
+            lstRestrictions.SelectionMode = AllowMultiple ? ListSelectionMode.Multiple : ListSelectionMode.Single;
+            btnSaveRestrictions.Text = AllowMultiple ? "Save" : "Add";
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
             // Registered by key, so it loads once even if the control is on the page twice
@@ -32,9 +47,21 @@ namespace DropdownTests.Controls
                 e.Row.TableSection = TableRowSection.TableHeader;   // <thead>, for the sticky header
         }
 
-        // Picker's Save: attach what is ticked, detach what was unticked
+        // Picker's Save. Multiple: attach what is ticked, detach what was unticked.
+        // Single: attach the one chosen restriction.
         protected void btnSaveRestrictions_Click(object sender, EventArgs e)
         {
+            if (!AllowMultiple)
+            {
+                int typeId;
+                if (int.TryParse(lstRestrictions.SelectedValue, out typeId) &&
+                    !RouteRestrictions.GetForRoute(RouteId).Any(a => a.RestrictionTypeId == typeId))
+                    RouteRestrictions.Attach(RouteId, typeId);
+                gvRestrictions.EditIndex = -1;
+                BindGrid();
+                return;
+            }
+
             var ticked = lstRestrictions.Items.Cast<ListItem>()
                 .Where(li => li.Selected && li.Value != "")
                 .Select(li => int.Parse(li.Value))
@@ -91,7 +118,10 @@ namespace DropdownTests.Controls
                     group = t.GroupName;
                 }
                 var item = new ListItem(t.Name, t.Id.ToString());
-                item.Selected = attachedIds.Contains(item.Value);
+                if (AllowMultiple)
+                    item.Selected = attachedIds.Contains(item.Value);       // ticked in the picker
+                else if (attachedIds.Contains(item.Value))
+                    item.Attributes["data-attached"] = "true";              // shown as "Already added"
                 if (!string.IsNullOrEmpty(t.Description))
                     item.Attributes["data-desc"] = t.Description;   // blank line = new paragraph
                 lstRestrictions.Items.Add(item);

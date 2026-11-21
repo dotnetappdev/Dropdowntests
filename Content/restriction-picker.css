@@ -27,6 +27,10 @@
 .rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
 .rp-overlay .rp-name { font-size: 17px; }
 .rp-overlay .rp-desc { margin: 4px 0 0; font-size: 15px; color: #555; }
+.rp-overlay .rp-done { cursor: default; color: #777; }
+.rp-overlay .rp-done:hover { background: none; }
+.rp-overlay .rp-tag { display: inline-block; margin-top: 2px; font-size: 13px; font-weight: bold; color: #555; }
+.rp-overlay .rp-primary:disabled { opacity: .5; cursor: default; }
 .rp-overlay .rp-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ccc; }
 .rp-overlay .rp-btn { flex: 1; padding: 14px; font: inherit; border: 1px solid #ccc; border-radius: 4px;
   background: #fff; color: #222; cursor: pointer; }

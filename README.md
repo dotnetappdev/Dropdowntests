@@ -32,6 +32,17 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
    The control registers `Scripts/restriction-picker.js` itself.
 4. Replace the sample data in `Models/RestrictionData.cs` with your own data access.
 
+### Choose one or several: `AllowMultiple`
+
+```aspx
+<uc:RoadRestrictions ID="RoadRestrictions1" runat="server" RouteId="42" AllowMultiple="false" />
+```
+
+| `AllowMultiple` | What the picker does |
+| --- | --- |
+| `true` (default) | Tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
+| `false` | Radio buttons, so you choose one restriction. Restrictions already on the route are greyed out and marked "Already added". The button says Add and stays disabled until you choose one. |
+
 ### Descriptions and groups
 
 - Each restriction can have a long `Description`. It is written to the list item's `data-desc` attribute and shown under the name in the picker. A blank line starts a new paragraph.

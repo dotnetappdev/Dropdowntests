@@ -8,11 +8,12 @@
     Add restriction</button>
 </div>
 
-<%-- Source list of all restrictions (hidden). Attached ones are pre-selected in code-behind. --%>
-<asp:ListBox ID="lstRestrictions" runat="server" SelectionMode="Multiple"
+<%-- Source list of all restrictions (hidden). Code-behind sets SelectionMode from AllowMultiple
+     and pre-selects the attached ones (or marks them "Already added" when choosing one). --%>
+<asp:ListBox ID="lstRestrictions" runat="server"
     data-title="Restrictions on this route" Style="display:none" />
 <%-- Clicked by the picker's Save button. No validation, so other validators on the page are left alone. --%>
-<asp:Button ID="btnSaveRestrictions" runat="server" Text="Save" CausesValidation="false"
+<asp:Button ID="btnSaveRestrictions" runat="server" CausesValidation="false"
     OnClick="btnSaveRestrictions_Click" Style="display:none" />
 
 <div class="grid-box">

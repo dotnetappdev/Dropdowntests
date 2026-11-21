@@ -6,8 +6,9 @@
          onclick="RestrictionPicker.open('<%= lstRestrictions.ClientID %>', '<%= btnSaveRestrictions.ClientID %>')">
        Add restriction</button>
 
-   - Items already selected in the list box (attached on the server) show ticked.
-   - Save copies the ticks back into the list box and clicks the hidden Save button (a normal postback).
+   - Multiple list box: tick boxes. Items already selected (attached on the server) show ticked.
+   - Single list box: radio buttons, choose one. Items with data-attached="true" show as "Already added".
+   - Save copies the choice back into the list box and clicks the hidden Save button (a normal postback).
    - Cancel or Esc closes without changing anything.
    - A list item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
    - A disabled item with an empty value is shown as a group heading.
@@ -27,6 +28,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     var list = document.getElementById(listId), save = document.getElementById(saveId);
     if (!list || !save || document.querySelector('.rp-overlay')) return;   // already open
     var opener = document.activeElement, root = document.documentElement, oldOverflow = root.style.overflow;
+    var multi = list.multiple;
 
     var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
     var body = el('div', 'rp-body'), bar = el('div', 'rp-bar');
@@ -43,16 +45,19 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     ov.appendChild(body);
     ov.appendChild(bar);
 
-    // One tick box per list item. Disabled items with no value are group headings.
+    // One tick box (or radio button) per list item. Disabled items with no value are group headings.
     var boxes = [];
     for (var i = 0; i < list.options.length; i++) {
       var o = list.options[i];
       if (o.disabled && !o.value) { body.appendChild(el('div', 'rp-group', o.text)); continue; }
       var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
-      cb.type = 'checkbox';                 // no name, so it never posts
-      cb.checked = o.selected;
-      cb.disabled = o.disabled;
+      var already = !multi && o.getAttribute('data-attached') === 'true';
+      cb.type = multi ? 'checkbox' : 'radio';
+      if (!multi) cb.name = 'rp-pick';      // groups the radios; the overlay is outside the form, so it never posts
+      cb.checked = multi && o.selected;
+      cb.disabled = o.disabled || already;
       text.appendChild(el('div', 'rp-name', o.text));
+      if (already) { item.className = 'rp-item rp-done'; text.appendChild(el('div', 'rp-tag', 'Already added')); }
       var paras = (o.getAttribute('data-desc') || '').split(/\n\s*\n/);
       for (var p = 0; p < paras.length; p++) if (paras[p].trim()) text.appendChild(el('p', 'rp-desc', paras[p].trim()));
       item.appendChild(cb);
@@ -62,15 +67,19 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     }
 
     function refresh() {
-      var n = 0, add = 0, rem = 0;
+      var n = 0, add = 0, rem = 0, chosen = null;
       for (var i = 0; i < boxes.length; i++) {
         var b = boxes[i], on = b.cb.checked;
-        b.item.className = on ? 'rp-item on' : 'rp-item';
-        if (on) n++;
+        if (!b.cb.disabled) b.item.className = on ? 'rp-item on' : 'rp-item';
+        if (on) { n++; chosen = b; }
         if (on && !b.was) add++;
         if (!on && b.was) rem++;
       }
-      sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
+      if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
+      else {
+        sub.textContent = chosen ? 'Selected: ' + chosen.opt.text : 'Choose one restriction to add';
+        ok.disabled = !chosen;
+      }
     }
     function close() {
       if (ov.parentNode) ov.parentNode.removeChild(ov);
@@ -90,8 +99,9 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     document.body.appendChild(ov);
     root.style.overflow = 'hidden';         // stop the page scrolling behind the overlay
     refresh();
-    var first = boxes[0];                   // start at the first ticked item
-    for (var j = 0; j < boxes.length; j++) if (boxes[j].was) { first = boxes[j]; break; }
+    var first = null;                       // start at the first ticked item, or the first that can be chosen
+    for (var j = 0; j < boxes.length && !first; j++) if (multi && boxes[j].was) first = boxes[j];
+    for (var k = 0; k < boxes.length && !first; k++) if (!boxes[k].cb.disabled) first = boxes[k];
     if (first) {
       body.scrollTop = first.item.offsetTop - body.offsetTop - 60;
       first.cb.focus();

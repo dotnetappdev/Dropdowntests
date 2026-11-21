@@ -21,6 +21,7 @@
   .gv a { color: #1a5fb4; font-weight: 600; text-decoration: none; margin-right: 12px; }
   .gv td.notes textarea { font: inherit; min-height: 90px; }
   .gv tr.editing td { background: #fffbe6; }
+  .mode { display: flex; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; }
   #log { background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font: 13px/1.5 Consolas, monospace; white-space: pre-wrap; min-height: 100px; max-height: 260px; overflow: auto; margin: 0; }
 </style>
 </head>
@@ -29,6 +30,8 @@
 <div class="wrap">
   <h1>Restriction picker demo</h1>
   <p>Open this file in a browser. It uses the real <code>restriction-picker.js</code> and <code>restriction-picker.css</code>. The script at the bottom of this page only pretends to be the server, so you can try it without running ASP.NET. The log shows what the code-behind would receive.</p>
+
+  <label class="mode"><input type="checkbox" id="demoAllowMultiple" checked> AllowMultiple (untick to choose one restriction at a time)</label>
 
   <!-- What RoadRestrictions.ascx renders -->
   <div class="uc-toolbar">
@@ -96,13 +99,22 @@ function render() {
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
-  // OnPreRender: source list with group headings, attached ones pre-selected
+  // OnInit: AllowMultiple sets the list box's selection mode and the button text
+  var multi = document.getElementById("demoAllowMultiple").checked;
+  lst.multiple = multi;
+  document.getElementById("RoadRestrictions1_btnSaveRestrictions").value = multi ? "Save" : "Add";
+
+  // OnPreRender: source list with group headings. Multiple: attached ones pre-selected.
+  // Single: attached ones marked data-attached ("Already added").
   var attached = rows.map(function (r) { return r.TypeId; }), o = '', g = null;
   types.forEach(function (t) {
+    var on = attached.indexOf(t.id) >= 0;
     if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
-    o += '<option value="' + t.id + '"' + (attached.indexOf(t.id) >= 0 ? ' selected' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+    o += '<option value="' + t.id + '"' + (on && multi ? ' selected' : '') + (on && !multi ? ' data-attached="true"' : '') +
+      (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
   });
   lst.innerHTML = o;
+  if (!multi) lst.selectedIndex = -1;
 }
 
 function post(arg) {
@@ -119,12 +131,24 @@ function post(arg) {
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
   var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
-  log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
   var attached = rows.map(function (r) { return r.TypeId; });
+  if (!lst.multiple) {
+    log("POST btnSaveRestrictions_Click  SelectedValue = \"" + (ticked[0] || "") + "\"");
+    if (ticked.length && attached.indexOf(ticked[0]) < 0) { rows.push({ Id: nextId++, TypeId: ticked[0], Notes: "" }); log("  Attach " + typeName(ticked[0])); }
+    editIndex = -1;
+    render();
+    return;
+  }
+  log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
   rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
   editIndex = -1;
+  render();
+};
+
+document.getElementById("demoAllowMultiple").onchange = function () {
+  log("GET page reloaded with AllowMultiple=\"" + this.checked + "\"");
   render();
 };
 
