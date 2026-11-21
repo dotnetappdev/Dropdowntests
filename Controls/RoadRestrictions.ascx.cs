@@ -91,6 +91,15 @@ namespace DropdownTests.Controls
             BindGrid();
         }
 
+        // Remove (unattach) a restriction from the route; its notes go with it
+        protected void gvRestrictions_RowDeleting(object sender, GridViewDeleteEventArgs e)
+        {
+            var id = (int)gvRestrictions.DataKeys[e.RowIndex].Value;
+            RouteRestrictions.Detach(id);
+            gvRestrictions.EditIndex = -1;
+            BindGrid();
+        }
+
         protected void gvRestrictions_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
             gvRestrictions.EditIndex = -1;

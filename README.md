@@ -94,6 +94,10 @@ Without JavaScript a real `<select>` can't open full screen, so the row shows a 
 - The control includes the picker's own styles (a scoped `<style>` block), so the full-screen list fills the screen and lays out correctly even if `restriction-picker.css` is missing or an older copy. A popover always shows above the rest of the page, whatever `z-index` other elements use.
 - The dropdown's text changes after Update (changing it straight away would need JavaScript). Until then the row shows "New restriction chosen. Press Update to save it.", done with CSS.
 
+### Removing a restriction
+
+Each row has **Remove** next to **Edit**. It asks first, in a small box: "Remove Low bridge from this route? Its notes will be deleted too.", with Cancel and Remove. That Remove is the GridView's `CommandName="Delete"`, so `gvRestrictions_RowDeleting` runs and calls `RouteRestrictions.Detach(id)`. The box is a popover (no JavaScript), styled by `.rp-confirm`.
+
 ### Descriptions and groups
 
 Each restriction can have a long `Description`. It is shown under the name in the picker, and a blank line starts a new paragraph. Restrictions are grouped under headings by `GroupName`.

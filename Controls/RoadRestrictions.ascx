@@ -35,6 +35,10 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
 .gv td:has(.rp-overlay input[data-orig]:not(:checked)) .rp-changed,
 .gv td:not(:has(.rp-overlay input[data-orig])):has(.rp-overlay input:checked) .rp-changed { display: inline-block; margin-top: .25rem; }
 .rp-overlay .btn-close { flex: none; margin-top: .125rem; }
+.rp-confirm { width: min(24rem, calc(100% - 2rem)); margin: auto; padding: 1.25rem; border: 0; border-radius: .5rem;   background-color: #fff; color: #212529; box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .25); white-space: normal; text-align: left; }
+.rp-confirm::backdrop { background-color: rgba(0, 0, 0, .4); }
+.rp-confirm p { margin: 0 0 1rem; }
+.rp-confirm .rp-confirm-bar { display: flex; gap: .5rem; justify-content: flex-end; }
 </style>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -90,6 +94,7 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
     OnRowEditing="gvRestrictions_RowEditing"
     OnRowUpdating="gvRestrictions_RowUpdating"
     OnRowCancelingEdit="gvRestrictions_RowCancelingEdit"
+    OnRowDeleting="gvRestrictions_RowDeleting"
     EmptyDataText="No restrictions attached yet. Click Add restriction.">
   <Columns>
     <asp:TemplateField HeaderText="Notes" ItemStyle-CssClass="notes">
@@ -153,7 +158,18 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
 
     <asp:TemplateField>
       <ItemTemplate>
-        <asp:LinkButton runat="server" CommandName="Edit" Text="Edit" />
+        <asp:LinkButton runat="server" CommandName="Edit" Text="Edit" CssClass="me-2" />
+        <%-- Remove (unattach) asks first in a small popover; its Remove is the grid's Delete command --%>
+        <button type="button" class="btn btn-link text-danger p-0 align-baseline"
+            popovertarget="<%# Container.ClientID %>_remove">Remove</button>
+        <div id="<%# Container.ClientID %>_remove" popover class="rp-confirm" role="dialog" aria-label="Remove restriction">
+          <p>Remove <strong><%#: Eval("RestrictionName") %></strong> from this route? Its notes will be deleted too.</p>
+          <div class="rp-confirm-bar">
+            <button type="button" class="btn btn-outline-secondary"
+                popovertarget="<%# Container.ClientID %>_remove" popovertargetaction="hide">Cancel</button>
+            <asp:LinkButton runat="server" CommandName="Delete" Text="Remove" CssClass="btn btn-danger" CausesValidation="false" />
+          </div>
+        </div>
       </ItemTemplate>
       <EditItemTemplate>
         <asp:LinkButton runat="server" CommandName="Update" Text="Update" CssClass="me-2" />
