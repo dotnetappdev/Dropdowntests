@@ -8,7 +8,7 @@ namespace DropdownTests.Controls
 {
     public partial class RoadRestrictions
     {
-        protected global::System.Web.UI.WebControls.ListBox lstRestrictions;
+        protected global::System.Web.UI.WebControls.Repeater rptRestrictions;
         protected global::System.Web.UI.WebControls.Button btnSaveRestrictions;
         protected global::System.Web.UI.WebControls.GridView gvRestrictions;
     }
