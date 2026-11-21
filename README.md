@@ -34,6 +34,8 @@ Browser support: Chrome and Edge 114+, Safari 17+, Firefox 125+. In older browse
 
 Open `demo/index.html` in a browser. It uses the real CSS from this repository. The script on that page only pretends to be the server so you can try saving.
 
+`demo/standalone.html` is the same page with the CSS built in, so it runs on its own. Use it to send the demo to someone or open it without the rest of the repository. Both pages have an **AllowMultiple** switch at the top to try choosing one or several.
+
 ## Files
 
 | File | What it is |
@@ -43,7 +45,8 @@ Open `demo/index.html` in a browser. It uses the real CSS from this repository. 
 | `Controls/RoadRestrictions.ascx.designer.cs` | Control declarations (Visual Studio regenerates this) |
 | `Models/RestrictionData.cs` | Sample in-memory data. Replace `RestrictionTypes` and `RouteRestrictions` with your database calls |
 | `Content/restriction-picker.css` | Styles for the grid and the picker. Picker rules are scoped to `.rp-overlay` |
-| `demo/index.html` | A page you can open in a browser to try it |
+| `demo/index.html` | A page you can open in a browser to try it (uses the CSS file above) |
+| `demo/standalone.html` | The same demo with the CSS built in, so it runs on its own |
 
 ## Using it in your app
 
