@@ -39,6 +39,35 @@
     </div>
   </div>
 
+  <!-- RoadRestrictions.ascx includes the picker's own scoped styles -->
+  <style>
+  .rp-overlay { background-color: #fff; color: #212529; font-size: 1rem; line-height: 1.5; text-align: left; }
+  .rp-overlay * { box-sizing: border-box; }
+  .rp-overlay .rp-head { padding: 1rem; border-bottom: 1px solid #dee2e6; }
+  .rp-overlay .rp-title { margin: 0; font-size: 1.25rem; font-weight: 500; line-height: 1.2; }
+  .rp-overlay .rp-sub { margin-top: .25rem; font-size: .875rem; color: #6c757d; }
+  .rp-overlay .rp-body { flex: 1; min-height: 0; overflow: auto; }
+  .rp-overlay .rp-group { padding: .75rem 1rem .375rem; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #6c757d; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+  .rp-overlay .rp-item { display: flex; gap: .75rem; align-items: flex-start; margin: 0; padding: .75rem 1rem; border-bottom: 1px solid #dee2e6; cursor: pointer; font-weight: 400; }
+  .rp-overlay .rp-item:hover { background-color: #f8f9fa; }
+  .rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; accent-color: #0d6efd; }
+  .rp-overlay .rp-item input:focus-visible { outline: 0; box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25); }
+  .rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
+  .rp-overlay .rp-name { display: block; }
+  .rp-overlay .rp-desc { display: block; margin: .25rem 0 0; font-size: .875rem; color: #6c757d; }
+  .rp-overlay .rp-tag { display: inline-block; margin-top: .25rem; padding: .35em .65em; font-size: .75em; font-weight: 700; line-height: 1; color: #fff; background-color: #6c757d; border-radius: .375rem; }
+  .rp-overlay .rp-bar { display: flex; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #fff; }
+  .rp-overlay .rp-bar .btn { flex: 1; padding-top: .625rem; padding-bottom: .625rem; } .rp-overlay { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; }
+  .rp-overlay:popover-open { display: flex; flex-direction: column; }
+  html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:has(input:checked) { background-color: #e7f1ff; }
+  .rp-overlay .rp-item:has(input:disabled) { cursor: default; opacity: .65; }
+  .rp-overlay .rp-item:has(input:disabled):hover { background-color: transparent; } .rp-dropdown { cursor: pointer; }
+  .rp-changed { display: none; color: #0d6efd; }
+  .gv td:has(.rp-overlay input[data-orig]:not(:checked)) .rp-changed,
+  .gv td:not(:has(.rp-overlay input[data-orig])):has(.rp-overlay input:checked) .rp-changed { display: inline-block; margin-top: .25rem; }
+  .rp-overlay .btn-close { flex: none; margin-top: .125rem; }
+  </style>
+
   <!-- What RoadRestrictions.ascx renders. The button and the picker can be in any order. -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h3 class="h4 m-0">Route obstructions and restrictions</h3>
