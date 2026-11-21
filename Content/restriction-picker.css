@@ -42,6 +42,14 @@
 .rp-overlay:popover-open { display: flex; flex-direction: column; }
 html:has(.rp-overlay:popover-open) { overflow: hidden; }   /* page behind doesn't scroll */
 .rp-overlay .rp-item:has(input:checked) { background-color: #e7f1ff; }
-/* AllowMultiple="false": restrictions already on the route */
+/* Grid-row list: restrictions already on another row ("Already added") */
 .rp-overlay .rp-item:has(input:disabled) { cursor: default; opacity: .65; }
 .rp-overlay .rp-item:has(input:disabled):hover { background-color: transparent; }
+
+/* Dropdown in a grid row: a button styled as a Bootstrap dropdown (form-select) that opens the
+   row's full-screen list. After a new choice the "press Update" hint shows (CSS only). */
+.rp-dropdown { cursor: pointer; }
+.rp-changed { display: none; color: #0d6efd; }
+.gv td:has(.rp-overlay input[data-orig]:not(:checked)) .rp-changed,
+.gv td:not(:has(.rp-overlay input[data-orig])):has(.rp-overlay input:checked) .rp-changed { display: inline-block; margin-top: .25rem; }
+.rp-overlay .btn-close { flex: none; margin-top: .125rem; }
