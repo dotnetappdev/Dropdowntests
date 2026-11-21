@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restriction Picker Demo</title>
+<!-- Content/restriction-picker.css, included so this page runs on its own -->
+<style>
+/* Content/restriction-picker.css */
+
+/* Grid: one Notes column, scrolls inside its box, header stays at the top */
+.grid-box { overflow: auto; max-height: 440px; }
+.gv { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.gv th, .gv td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #ccc; vertical-align: top; }
+.gv th { position: sticky; top: 0; background: #fff; }
+.gv td.notes { width: 100%; min-width: 260px; }
+.gv .rname { font-weight: bold; }
+.gv .ntext { white-space: pre-line; max-width: 75ch; }
+.gv td.notes textarea { width: 100%; min-width: 260px; box-sizing: border-box; resize: vertical; }
+
+/* Restriction picker: every rule is scoped to .rp-overlay */
+.rp-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column;
+  background: #fff; color: #222; font: 16px/1.5 system-ui, "Segoe UI", Arial, sans-serif; text-align: left; }
+.rp-overlay * { box-sizing: border-box; }
+.rp-overlay .rp-head { padding: 16px; border-bottom: 1px solid #ccc; }
+.rp-overlay .rp-title { font-size: 18px; font-weight: bold; }
+.rp-overlay .rp-sub { font-size: 13px; color: #666; }
+.rp-overlay .rp-body { flex: 1; min-height: 0; overflow: auto; }
+.rp-overlay .rp-group { padding: 16px 16px 6px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #666; }
+.rp-overlay .rp-item { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 12px 16px;
+  border-bottom: 1px solid #ddd; cursor: pointer; font-weight: normal; }
+.rp-overlay .rp-item:hover { background: #f0f4fa; }
+.rp-overlay .rp-item.on { background: #eaf1fb; }
+.rp-overlay .rp-item input { flex: none; width: 20px; height: 20px; margin: 3px 0 0; }
+.rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
+.rp-overlay .rp-name { font-size: 17px; }
+.rp-overlay .rp-desc { margin: 4px 0 0; font-size: 15px; color: #555; }
+.rp-overlay .rp-done { cursor: default; color: #777; }
+.rp-overlay .rp-done:hover { background: none; }
+.rp-overlay .rp-tag { display: inline-block; margin-top: 2px; font-size: 13px; font-weight: bold; color: #555; }
+.rp-overlay .rp-primary:disabled { opacity: .5; cursor: default; }
+.rp-overlay .rp-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ccc; }
+.rp-overlay .rp-btn { flex: 1; padding: 14px; font: inherit; border: 1px solid #ccc; border-radius: 4px;
+  background: #fff; color: #222; cursor: pointer; }
+.rp-overlay .rp-primary { background: #1a5fb4; border-color: #1a5fb4; color: #fff; }
+</style>
+<!-- Scripts/restriction-picker.js, included so this page runs on its own -->
+<script>
+/* Scripts/restriction-picker.js
+   Full-screen tick list for a hidden <asp:ListBox SelectionMode="Multiple">.
+
+   Usage (from the user control):
+     <button type="button"
+         onclick="RestrictionPicker.open('<%= lstRestrictions.ClientID %>', '<%= btnSaveRestrictions.ClientID %>')">
+       Add restriction</button>
+
+   - Multiple list box: tick boxes. Items already selected (attached on the server) show ticked.
+   - Single list box: radio buttons, choose one. Items with data-attached="true" show as "Already added".
+   - Save copies the choice back into the list box and clicks the hidden Save button (a normal postback).
+   - Cancel or Esc closes without changing anything.
+   - A list item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
+   - A disabled item with an empty value is shown as a group heading.
+
+   Safe alongside the rest of the app: it does nothing until open() is called, adds no page-wide
+   event listeners, defines one global (RestrictionPicker), and the overlay is removed from the
+   page when it closes. Plain ES5. */
+window.RestrictionPicker = window.RestrictionPicker || (function () {
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function open(listId, saveId) {
+    var list = document.getElementById(listId), save = document.getElementById(saveId);
+    if (!list || !save || document.querySelector('.rp-overlay')) return;   // already open
+    var opener = document.activeElement, root = document.documentElement, oldOverflow = root.style.overflow;
+    var multi = list.multiple;
+
+    var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
+    var body = el('div', 'rp-body'), bar = el('div', 'rp-bar');
+    var cancel = el('button', 'rp-btn', 'Cancel'), ok = el('button', 'rp-btn rp-primary', save.value || 'Save');
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', list.getAttribute('data-title') || 'Select');
+    cancel.type = ok.type = 'button';
+    head.appendChild(el('div', 'rp-title', list.getAttribute('data-title') || 'Select'));
+    head.appendChild(sub);
+    bar.appendChild(cancel);
+    bar.appendChild(ok);
+    ov.appendChild(head);
+    ov.appendChild(body);
+    ov.appendChild(bar);
+
+    // One tick box (or radio button) per list item. Disabled items with no value are group headings.
+    var boxes = [];
+    for (var i = 0; i < list.options.length; i++) {
+      var o = list.options[i];
+      if (o.disabled && !o.value) { body.appendChild(el('div', 'rp-group', o.text)); continue; }
+      var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
+      var already = !multi && o.getAttribute('data-attached') === 'true';
+      cb.type = multi ? 'checkbox' : 'radio';
+      if (!multi) cb.name = 'rp-pick';      // groups the radios; the overlay is outside the form, so it never posts
+      cb.checked = multi && o.selected;
+      cb.disabled = o.disabled || already;
+      text.appendChild(el('div', 'rp-name', o.text));
+      if (already) { item.className = 'rp-item rp-done'; text.appendChild(el('div', 'rp-tag', 'Already added')); }
+      var paras = (o.getAttribute('data-desc') || '').split(/\n\s*\n/);
+      for (var p = 0; p < paras.length; p++) if (paras[p].trim()) text.appendChild(el('p', 'rp-desc', paras[p].trim()));
+      item.appendChild(cb);
+      item.appendChild(text);
+      body.appendChild(item);
+      boxes.push({ opt: o, cb: cb, item: item, was: o.selected });
+    }
+
+    function refresh() {
+      var n = 0, add = 0, rem = 0, chosen = null;
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i], on = b.cb.checked;
+        if (!b.cb.disabled) b.item.className = on ? 'rp-item on' : 'rp-item';
+        if (on) { n++; chosen = b; }
+        if (on && !b.was) add++;
+        if (!on && b.was) rem++;
+      }
+      if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
+      else {
+        sub.textContent = chosen ? 'Selected: ' + chosen.opt.text : 'Choose one restriction to add';
+        ok.disabled = !chosen;
+      }
+    }
+    function close() {
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      root.style.overflow = oldOverflow;
+      if (opener && opener.focus) opener.focus();
+    }
+
+    body.onchange = refresh;
+    cancel.onclick = close;
+    ok.onclick = function () {
+      for (var i = 0; i < boxes.length; i++) boxes[i].opt.selected = boxes[i].cb.checked;
+      close();
+      save.click();                         // normal postback to btnSaveRestrictions_Click
+    };
+    ov.onkeydown = function (e) { if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); close(); } };
+
+    document.body.appendChild(ov);
+    root.style.overflow = 'hidden';         // stop the page scrolling behind the overlay
+    refresh();
+    var first = null;                       // start at the first ticked item, or the first that can be chosen
+    for (var j = 0; j < boxes.length && !first; j++) if (multi && boxes[j].was) first = boxes[j];
+    for (var k = 0; k < boxes.length && !first; k++) if (!boxes[k].cb.disabled) first = boxes[k];
+    if (first) {
+      body.scrollTop = first.item.offsetTop - body.offsetTop - 60;
+      first.cb.focus();
+    } else ok.focus();
+  }
+
+  return { open: open };
+})();
+</script>
+<style>
+  /* Demo page only */
+  body { margin: 0; background: #fff; color: #222; font: 15px/1.5 system-ui, "Segoe UI", Arial, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  p { margin: 0; color: #555; max-width: 70ch; }
+  .uc-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .uc-toolbar h3 { margin: 0; font-size: 16px; }
+  .btn-primary { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #1a5fb4; background: #1a5fb4; color: #fff; }
+  .grid-box { border: 1px solid #ccc; border-radius: 4px; }
+  .gv th { font-size: 12px; text-transform: uppercase; color: #666; }
+  .gv a { color: #1a5fb4; font-weight: 600; text-decoration: none; margin-right: 12px; }
+  .gv td.notes textarea { font: inherit; min-height: 90px; }
+  .gv tr.editing td { background: #fffbe6; }
+  .mode { display: flex; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; }
+  #log { background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font: 13px/1.5 Consolas, monospace; white-space: pre-wrap; min-height: 100px; max-height: 260px; overflow: auto; margin: 0; }
+</style>
+</head>
+<body>
+<form id="form1" onsubmit="return false">
+<div class="wrap">
+  <h1>Restriction picker demo</h1>
+  <p>This page runs on its own: open it in a browser, no other files needed. It uses the real <code>restriction-picker.js</code> and <code>restriction-picker.css</code>. The script at the bottom of this page only pretends to be the server, so you can try it without running ASP.NET. The log shows what the code-behind would receive.</p>
+
+  <label class="mode"><input type="checkbox" id="demoAllowMultiple" checked> AllowMultiple (untick to choose one restriction at a time)</label>
+
+  <!-- What RoadRestrictions.ascx renders -->
+  <div class="uc-toolbar">
+    <h3>Route obstructions and restrictions</h3>
+    <button type="button" class="btn-primary"
+      onclick="RestrictionPicker.open('RoadRestrictions1_lstRestrictions', 'RoadRestrictions1_btnSaveRestrictions')">Add restriction</button>
+  </div>
+  <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
+    data-title="Restrictions on this route" style="display:none"></select>
+  <input type="submit" name="RoadRestrictions1$btnSaveRestrictions" id="RoadRestrictions1_btnSaveRestrictions" value="Save" style="display:none">
+  <div class="grid-box"><table class="gv" id="RoadRestrictions1_gvRestrictions"></table></div>
+
+  <h3>Postback log</h3>
+  <pre id="log"></pre>
+</div>
+</form>
+
+<script>
+/* ===== Demo only: a fake server standing in for the code-behind ===== */
+var groups = [
+  ["Height", ["Low bridge", "Overhead power cables", "Overhead telecom cables", "Overhanging trees", "Footbridge", "Gantry / overhead sign", "Height-restricted tunnel"]],
+  ["Width", ["Narrow road", "Width restriction", "Narrow bridge", "Traffic island / central reserve", "Bollards", "Street furniture (signs, lamp posts)", "Parked vehicles", "Road works / barriers"]],
+  ["Weight", ["Weight-restricted bridge", "Weak culvert", "Weight limit on road", "Cellar or void under road"]],
+  ["Length and turning", ["Tight bend", "Hairpin bend", "Small roundabout", "Mini roundabout", "Sharp junction"]],
+  ["Ground clearance", ["Hump-back bridge", "Level crossing", "Speed humps / cushions", "Steep gradient", "Severe camber"]],
+  ["Movement conditions", ["Police escort required", "Time-of-day restriction", "Convoy / low speed only", "Contraflow required", "Toll or barrier"]]
+];
+var descriptions = {
+  "Low bridge": "Any bridge where the headroom is less than the load height plus a safety margin. Check the signed height and the measured height on both carriageways, because headroom often differs between lanes and at the kerb.\n\nIf the load cannot clear the bridge, record the diversion in Notes and confirm it with the highway authority before the movement order is issued.",
+  "Overhead power cables": "Overhead lines cross many rural routes and are usually lowest at mid-span, not at the poles. Measure the lowest point over the carriageway, not the verge.\n\nIf the clearance is below the safe distance for the voltage, the network operator must lift the line or switch it off.",
+  "Weight-restricted bridge": "A structure with a signed or assessed weight limit below the gross weight or axle loads of the movement.\n\nThe structure owner must be notified. They may require the load to cross alone, at walking pace and on the centre line.",
+  "Small roundabout": "The swept path of the vehicle is wider than the roundabout allows.\n\nCommon solutions are overrunning the central island, going the wrong way round under escort, or using rear steer.",
+  "Level crossing": "Low loaders and long vehicles can ground on the crossing or take too long to clear it. Where the crossing has a phone, the driver must call the signaller and get permission before crossing."
+};
+var types = [];
+groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types.length + 1, name: n, group: g[0], desc: descriptions[n] || "" }); }); });
+function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
+function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
+
+var nextId = 1, editIndex = -1;
+var rows = [
+  { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
+  { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
+  { TypeId: idOf("Small roundabout"), Notes: "A449 / Worcester Rd. Overrun the central island with escort holding traffic." }
+];
+rows.forEach(function (r) { r.Id = nextId++; });
+
+var GV = "RoadRestrictions1$gvRestrictions";
+var lst = document.getElementById("RoadRestrictions1_lstRestrictions");
+var logEl = document.getElementById("log");
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function log(s) { logEl.textContent += s + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+
+function render() {
+  // GridView: one Notes column
+  var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
+  rows.forEach(function (r, i) {
+    if (i === editIndex)
+      h += '<tr class="editing"><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><textarea id="txtNotes" rows="4">' + esc(r.Notes) + '</textarea></td>' +
+        '<td><a href="#" onclick="return post(\'Update$' + i + '\')">Update</a><a href="#" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
+    else
+      h += '<tr><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><div class="ntext">' + esc(r.Notes) + '</div></td>' +
+        '<td><a href="#" onclick="return post(\'Edit$' + i + '\')">Edit</a></td></tr>';
+  });
+  document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
+
+  // OnInit: AllowMultiple sets the list box's selection mode and the button text
+  var multi = document.getElementById("demoAllowMultiple").checked;
+  lst.multiple = multi;
+  document.getElementById("RoadRestrictions1_btnSaveRestrictions").value = multi ? "Save" : "Add";
+
+  // OnPreRender: source list with group headings. Multiple: attached ones pre-selected.
+  // Single: attached ones marked data-attached ("Already added").
+  var attached = rows.map(function (r) { return r.TypeId; }), o = '', g = null;
+  types.forEach(function (t) {
+    var on = attached.indexOf(t.id) >= 0;
+    if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
+    o += '<option value="' + t.id + '"' + (on && multi ? ' selected' : '') + (on && !multi ? ' data-attached="true"' : '') +
+      (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+  });
+  lst.innerHTML = o;
+  if (!multi) lst.selectedIndex = -1;
+}
+
+function post(arg) {
+  var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
+  log("POST " + GV + "  " + arg);
+  if (cmd === "Edit") editIndex = i;
+  if (cmd === "Update") { rows[i].Notes = document.getElementById("txtNotes").value; log("  RowUpdating: notes saved for " + typeName(rows[i].TypeId)); editIndex = -1; }
+  if (cmd === "Cancel") editIndex = -1;
+  render();
+  return false;
+}
+
+// Real app: the hidden asp:Button submits the form. Here it calls the fake server instead.
+document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
+  e.preventDefault();
+  var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
+  var attached = rows.map(function (r) { return r.TypeId; });
+  if (!lst.multiple) {
+    log("POST btnSaveRestrictions_Click  SelectedValue = \"" + (ticked[0] || "") + "\"");
+    if (ticked.length && attached.indexOf(ticked[0]) < 0) { rows.push({ Id: nextId++, TypeId: ticked[0], Notes: "" }); log("  Attach " + typeName(ticked[0])); }
+    editIndex = -1;
+    render();
+    return;
+  }
+  log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
+  rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
+  rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
+  ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
+  editIndex = -1;
+  render();
+};
+
+document.getElementById("demoAllowMultiple").onchange = function () {
+  log("GET page reloaded with AllowMultiple=\"" + this.checked + "\"");
+  render();
+};
+
+render();
+log("GET page loaded");
+</script>
+</body>
+</html>

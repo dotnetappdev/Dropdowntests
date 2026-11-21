@@ -8,6 +8,8 @@ This is the version that uses a small JavaScript file. The picker works well on 
 
 Open `demo/index.html` in a browser. It loads the real script and CSS from this repository and uses a fake server so you can click through it.
 
+`demo/standalone.html` is the same page with the script and CSS built in, so it runs on its own. Use it to send the demo to someone or open it without the rest of the repository. Both pages have an **AllowMultiple** switch at the top to try choosing one or several.
+
 ## Files
 
 | File | What it is |
@@ -18,7 +20,8 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 | `Models/RestrictionData.cs` | Sample in-memory data. Replace `RestrictionTypes` and `RouteRestrictions` with your database calls |
 | `Scripts/restriction-picker.js` | The full-screen tick list, about 90 lines of plain ES5 |
 | `Content/restriction-picker.css` | Styles for the grid and the picker |
-| `demo/index.html` | A page you can open in a browser to try it |
+| `demo/index.html` | A page you can open in a browser to try it (uses the script and CSS files above) |
+| `demo/standalone.html` | The same demo with the script and CSS built in, so it runs on its own |
 
 ## Using it in your app
 
