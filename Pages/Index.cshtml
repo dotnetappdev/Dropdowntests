@@ -1,0 +1,142 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Heavy load route";
+}
+
+<h2>Heavy load route</h2>
+
+@* Demo only: switch AllowMultiple with the query string *@
+<div class="alert alert-secondary py-2">
+    <strong>AllowMultiple:</strong>
+    @if (Model.AllowMultiple)
+    {
+        <span>on (tick several).</span> <a asp-page="./Index" asp-route-allowMultiple="false">Switch to tick one</a>
+    }
+    else
+    {
+        <span>off (tick one).</span> <a asp-page="./Index" asp-route-allowMultiple="true">Switch to tick several</a>
+    }
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h3 class="h4 m-0">Route obstructions and restrictions</h3>
+    @* Opens the full-screen list (restriction-picker.js). No request until Save. *@
+    <button type="button" class="btn btn-primary"
+            onclick="RestrictionPicker.open('lstRestrictions', 'btnSaveRestrictions')">Add restriction</button>
+</div>
+
+@* The hidden source list for the full-screen list, and the Save button it clicks.
+   Several: attached ones are selected. One: attached ones are marked data-attached
+   (shown ticked, greyed out and "Already added"). A blank line in data-desc starts a new paragraph. *@
+<form method="post" asp-page-handler="Save">
+    @* Written as text: Razor would drop a value="@bool" attribute when it is false *@
+    <input type="hidden" name="AllowMultiple" value="@(Model.AllowMultiple ? "true" : "false")" />
+    <select id="lstRestrictions" name="ticked" multiple="@Model.AllowMultiple"
+            data-title="Restrictions on this route" style="display:none">
+        @if (!Model.AllowMultiple)
+        {
+            @* A single-choice select always selects something, so start on an empty choice *@
+            <option value="" selected>-- Select a restriction --</option>
+        }
+        @{ string group = null; }
+        @foreach (var t in Model.Types)
+        {
+            if (t.GroupName != group)
+            {
+                group = t.GroupName;
+                <option value="" disabled>@t.GroupName</option>
+            }
+            var attached = Model.AttachedTypeIds.Contains(t.Id);
+            <option value="@t.Id"
+                    selected="@(Model.AllowMultiple && attached)"
+                    data-attached="@(!Model.AllowMultiple && attached ? "true" : null)"
+                    data-desc="@t.Description">@t.Name</option>
+        }
+    </select>
+    <button type="submit" id="btnSaveRestrictions" value="Save" style="display:none">Save</button>
+</form>
+
+<div class="grid-box border rounded">
+    <table class="table table-striped gv">
+        <thead>
+            <tr><th>Notes</th><th></th></tr>
+        </thead>
+        <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr><td colspan="2" class="text-muted fst-italic">No restrictions attached yet. Click Add restriction.</td></tr>
+            }
+            @foreach (var r in Model.Rows)
+            {
+                if (r.Id == Model.EditId)
+                {
+                    @* Row in edit mode: the restriction as a dropdown list, and the notes *@
+                    <tr class="editing">
+                        <td class="notes">
+                            <form method="post" asp-page-handler="Update" id="edit-@r.Id">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input type="hidden" name="AllowMultiple" value="@(Model.AllowMultiple ? "true" : "false")" />
+                                @* An invisible button lies over the dropdown, so a click or tap opens the full-screen
+                                   list and never the browser's or phone's own picker. The list's Update and Cancel
+                                   press this row's Update and Cancel (gv-update / gv-cancel). *@
+                                <span style="position:relative;display:block">
+                                    <select name="typeId" class="form-select" data-title="Obstruction / restriction"
+                                            onkeydown="return RestrictionPicker.selectKey(this, event)">
+                                        @{ string rowGroup = null; }
+                                        @foreach (var t in Model.Types)
+                                        {
+                                            if (t.GroupName != rowGroup)
+                                            {
+                                                rowGroup = t.GroupName;
+                                                <option value="" disabled>@t.GroupName</option>
+                                            }
+                                            var taken = t.Id != r.RestrictionTypeId && Model.AttachedTypeIds.Contains(t.Id);
+                                            <option value="@t.Id"
+                                                    selected="@(t.Id == r.RestrictionTypeId)"
+                                                    disabled="@taken"
+                                                    data-attached="@(taken ? "true" : null)"
+                                                    data-desc="@t.Description">@t.Name</option>
+                                        }
+                                    </select>
+                                    <button type="button" tabindex="-1" aria-hidden="true"
+                                            style="position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer"
+                                            onclick="RestrictionPicker.fromSelect(this.parentNode.getElementsByTagName('select')[0])"></button>
+                                </span>
+                                <textarea name="notes" rows="4" class="form-control mt-2">@r.Notes</textarea>
+                            </form>
+                        </td>
+                        <td>
+                            <button type="submit" form="edit-@r.Id" class="btn btn-link p-0 align-baseline gv-update me-2">Update</button>
+                            <a asp-page="./Index" asp-route-allowMultiple="@Model.AllowMultiple" class="gv-cancel">Cancel</a>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td class="notes">
+                            <div class="rname">@r.RestrictionName</div>
+                            <div class="ntext">@r.Notes</div>
+                        </td>
+                        <td>
+                            <a asp-page="./Index" asp-route-editId="@r.Id" asp-route-allowMultiple="@Model.AllowMultiple" class="me-2">Edit</a>
+                            @* Remove (unattach) asks first in a small popover (no JavaScript) *@
+                            <button type="button" class="btn btn-link text-danger p-0 align-baseline" popovertarget="remove-@r.Id">Remove</button>
+                            <div id="remove-@r.Id" popover class="rp-confirm" role="dialog" aria-label="Remove restriction">
+                                <p>Remove <strong>@r.RestrictionName</strong> from this route? Its notes will be deleted too.</p>
+                                <form method="post" asp-page-handler="Remove" class="rp-confirm-bar">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input type="hidden" name="AllowMultiple" value="@(Model.AllowMultiple ? "true" : "false")" />
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            popovertarget="remove-@r.Id" popovertargetaction="hide">Cancel</button>
+                                    <button type="submit" class="btn btn-danger">Remove</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

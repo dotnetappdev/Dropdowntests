@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DropdownTests
+namespace DropdownTests.Models
 {
-    // Sample data access so the control runs on its own.
-    // Replace the bodies of RestrictionTypes and RouteRestrictions with calls to your database.
+    // Sample data so the page runs on its own. Replace RestrictionTypes and RestrictionStore
+    // with your own data access (for example an EF Core DbContext).
 
     public class RestrictionType
     {
@@ -66,55 +66,69 @@ namespace DropdownTests
         }
     }
 
-    /// <summary>Restrictions attached to a route (what the grid shows). In-memory sample only.</summary>
-    public static class RouteRestrictions
+    /// <summary>
+    /// Restrictions attached to routes (what the grid shows). In-memory sample only,
+    /// registered as a singleton in Startup.
+    /// </summary>
+    public class RestrictionStore
     {
-        private static readonly object Sync = new object();
-        private static readonly List<RouteRestriction> Rows = new List<RouteRestriction>();
-        private static int _nextId = 1;
+        private readonly object _sync = new object();
+        private readonly List<RouteRestriction> _rows = new List<RouteRestriction>();
+        private int _nextId = 1;
 
-        public static IList<RouteRestriction> GetForRoute(int routeId)
+        public RestrictionStore()
         {
-            lock (Sync) return Rows.Where(r => r.RouteId == routeId).ToList();
+            // Sample restrictions on route 42
+            Attach(42, IdOf("Low bridge"), "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019.");
+            Attach(42, IdOf("Weight-restricted bridge"), "B4632 Mill Brook bridge, 18 t. Bridge assessment requested.");
+            Attach(42, IdOf("Small roundabout"), "A449 / Worcester Rd. Overrun the central island with escort holding traffic.");
         }
 
-        public static void Attach(int routeId, int restrictionTypeId, string notes = "")
+        private static int IdOf(string name)
+        {
+            return RestrictionTypes.GetAll().First(t => t.Name == name).Id;
+        }
+
+        public IList<RouteRestriction> GetForRoute(int routeId)
+        {
+            lock (_sync) return _rows.Where(r => r.RouteId == routeId).ToList();
+        }
+
+        public void Attach(int routeId, int restrictionTypeId, string notes = "")
         {
             var type = RestrictionTypes.Get(restrictionTypeId);
-            lock (Sync)
-                Rows.Add(new RouteRestriction
+            if (type == null) return;
+            lock (_sync)
+            {
+                if (_rows.Any(r => r.RouteId == routeId && r.RestrictionTypeId == restrictionTypeId)) return;
+                _rows.Add(new RouteRestriction
                 {
                     Id = _nextId++, RouteId = routeId, RestrictionTypeId = restrictionTypeId,
-                    RestrictionName = type != null ? type.Name : "", Notes = notes ?? ""
+                    RestrictionName = type.Name, Notes = notes ?? ""
                 });
+            }
         }
 
         /// <summary>Changes a row's restriction and notes (editing a grid row).</summary>
-        public static void Update(int id, int restrictionTypeId, string notes)
+        public void Update(int id, int restrictionTypeId, string notes)
         {
             var type = RestrictionTypes.Get(restrictionTypeId);
-            lock (Sync)
+            if (type == null) return;
+            lock (_sync)
             {
-                var row = Rows.FirstOrDefault(r => r.Id == id);
+                var row = _rows.FirstOrDefault(r => r.Id == id);
                 if (row == null) return;
+                if (_rows.Any(r => r.Id != id && r.RouteId == row.RouteId && r.RestrictionTypeId == restrictionTypeId)) return;
                 row.RestrictionTypeId = restrictionTypeId;
-                row.RestrictionName = type != null ? type.Name : "";
+                row.RestrictionName = type.Name;
                 row.Notes = notes ?? "";
             }
         }
 
-        public static void Detach(int id)
+        /// <summary>Removes (unattaches) a restriction from its route.</summary>
+        public void Detach(int id)
         {
-            lock (Sync) Rows.RemoveAll(r => r.Id == id);
-        }
-
-        public static void UpdateNotes(int id, string notes)
-        {
-            lock (Sync)
-            {
-                var row = Rows.FirstOrDefault(r => r.Id == id);
-                if (row != null) row.Notes = notes;
-            }
+            lock (_sync) _rows.RemoveAll(r => r.Id == id);
         }
     }
 }
