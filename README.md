@@ -56,4 +56,19 @@ Open `demo/index.html` in a browser. It uses the real CSS from this repository. 
    ```
 4. Replace the sample data in `Models/RestrictionData.cs` with your own data access.
 
+### Choose one or several: `AllowMultiple`
+
+```aspx
+<uc:RoadRestrictions ID="RoadRestrictions1" runat="server" RouteId="42" AllowMultiple="false" />
+```
+
+| `AllowMultiple` | What the picker does |
+| --- | --- |
+| `true` (default) | Tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. |
+| `false` | Radio buttons, so you choose one restriction. Restrictions already on the route are greyed out and marked "Already added". The button says Add. Pressing Add with nothing chosen does nothing. |
+
+In single mode the radio buttons are plain HTML inputs that share one name, because `asp:RadioButton` inside a Repeater gives each item its own group. The code-behind reads the choice from `Request.Form[PickName]`.
+
+### Descriptions and groups
+
 Each restriction can have a long `Description`. It is shown under the name in the picker, and a blank line starts a new paragraph. Restrictions are grouped under headings by `GroupName`.

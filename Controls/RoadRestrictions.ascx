@@ -13,7 +13,7 @@
 <div id="<%= ClientID %>_picker" popover class="rp-overlay" role="dialog" aria-label="Restrictions on this route">
   <div class="rp-head">
     <div class="rp-title">Restrictions on this route</div>
-    <div class="rp-sub">Tick the restrictions that apply, then Save.</div>
+    <div class="rp-sub"><%= AllowMultiple ? "Tick the restrictions that apply, then Save." : "Choose one restriction to add, then press Add." %></div>
   </div>
   <div class="rp-body">
     <asp:Repeater ID="rptRestrictions" runat="server">
@@ -22,10 +22,19 @@
           <div class="rp-group"><%#: Eval("GroupName") %></div>
         </asp:PlaceHolder>
         <label class="rp-item">
-          <asp:CheckBox ID="chk" runat="server" Checked='<%# Eval("IsAttached") %>' />
+          <%-- AllowMultiple="true": a tick box, ticked when attached --%>
+          <asp:CheckBox ID="chk" runat="server" Checked='<%# Eval("IsAttached") %>' Visible='<%# AllowMultiple %>' />
+          <%-- AllowMultiple="false": one radio group (plain HTML, so the radios share a name).
+               Restrictions already on the route can't be chosen. --%>
+          <asp:PlaceHolder runat="server" Visible='<%# !AllowMultiple %>'>
+            <input type="radio" name="<%# PickName %>" value="<%# Eval("Id") %>" <%# (bool)Eval("IsAttached") ? "disabled" : "" %> />
+          </asp:PlaceHolder>
           <asp:HiddenField ID="hfId" runat="server" Value='<%# Eval("Id") %>' />
           <span class="rp-text">
             <span class="rp-name"><%#: Eval("Name") %></span>
+            <asp:PlaceHolder runat="server" Visible='<%# !AllowMultiple && (bool)Eval("IsAttached") %>'>
+              <span class="rp-tag">Already added</span>
+            </asp:PlaceHolder>
             <%# Paragraphs((string)Eval("Description")) %>
           </span>
         </label>
@@ -34,7 +43,7 @@
   </div>
   <div class="rp-bar">
     <button type="button" class="rp-btn" popovertarget="<%= ClientID %>_picker" popovertargetaction="hide">Cancel</button>
-    <asp:Button ID="btnSaveRestrictions" runat="server" Text="Save" CssClass="rp-btn rp-primary"
+    <asp:Button ID="btnSaveRestrictions" runat="server" CssClass="rp-btn rp-primary"
         CausesValidation="false" OnClick="btnSaveRestrictions_Click" />
   </div>
 </div>

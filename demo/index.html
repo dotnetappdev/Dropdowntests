@@ -14,6 +14,7 @@
   p { margin: 0; color: #555; max-width: 70ch; }
   .uc-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
   .uc-toolbar h3 { margin: 0; font-size: 16px; }
+  .mode { display: flex; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; }
   .btn-primary { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #1a5fb4; background: #1a5fb4; color: #fff; }
   .grid-box { border: 1px solid #ccc; border-radius: 4px; }
   .gv th { font-size: 12px; text-transform: uppercase; color: #666; }
@@ -29,6 +30,8 @@
   <h1>Restriction picker demo (no JavaScript)</h1>
   <p>Open this file in a browser. The picker opens and closes with the browser's built-in popover feature, so it needs no script. The script at the bottom of this page only pretends to be the server so you can try saving without running ASP.NET.</p>
 
+  <label class="mode"><input type="checkbox" id="demoAllowMultiple" checked> AllowMultiple (untick to choose one restriction at a time)</label>
+
   <!-- What RoadRestrictions.ascx renders. The button and the picker can be in any order. -->
   <div class="uc-toolbar">
     <h3>Route obstructions and restrictions</h3>
@@ -40,7 +43,7 @@
   <div id="RoadRestrictions1_picker" popover class="rp-overlay" role="dialog" aria-label="Restrictions on this route">
     <div class="rp-head">
       <div class="rp-title">Restrictions on this route</div>
-      <div class="rp-sub">Tick the restrictions that apply, then Save.</div>
+      <div class="rp-sub" id="RoadRestrictions1_rpSub">Tick the restrictions that apply, then Save.</div>
     </div>
     <div class="rp-body" id="RoadRestrictions1_rpBody"></div>
     <div class="rp-bar">
@@ -102,13 +105,21 @@ function render() {
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
+  // AllowMultiple: tick boxes (attached ones ticked) or one radio group (attached ones "Already added")
+  var multi = document.getElementById("demoAllowMultiple").checked;
+  document.getElementById("RoadRestrictions1_btnSaveRestrictions").value = multi ? "Save" : "Add";
+  document.getElementById("RoadRestrictions1_rpSub").textContent = multi ? "Tick the restrictions that apply, then Save." : "Choose one restriction to add, then press Add.";
   var attached = rows.map(function (r) { return r.TypeId; }), o = '', g = null;
   types.forEach(function (t, i) {
     var p = "RoadRestrictions1$rptRestrictions$ctl" + (i < 10 ? "0" : "") + i + "$";
+    var on = attached.indexOf(t.id) >= 0;
     if (t.group !== g) { o += '<div class="rp-group">' + esc(t.group) + '</div>'; g = t.group; }
-    o += '<label class="rp-item"><input type="checkbox" name="' + p + 'chk"' + (attached.indexOf(t.id) >= 0 ? ' checked' : '') + '>' +
+    o += '<label class="rp-item">' +
+      (multi ? '<input type="checkbox" name="' + p + 'chk"' + (on ? ' checked' : '') + '>'
+             : '<input type="radio" name="RoadRestrictions1$pick" value="' + t.id + '"' + (on ? ' disabled' : '') + '>') +
       '<input type="hidden" name="' + p + 'hfId" value="' + t.id + '">' +
       '<span class="rp-text"><span class="rp-name">' + esc(t.name) + '</span>' +
+      (!multi && on ? '<span class="rp-tag">Already added</span>' : '') +
       (t.desc ? t.desc.split(/\n\s*\n/).map(function (s) { return '<span class="rp-desc">' + esc(s.trim()) + '</span>'; }).join('') : '') +
       '</span></label>';
   });
@@ -130,6 +141,15 @@ function post(arg) {
 // Real app: the asp:Button submits the form. Here it calls the fake server instead.
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
+  if (!document.getElementById("demoAllowMultiple").checked) {
+    var picked = document.querySelector('input[name="RoadRestrictions1$pick"]:checked');
+    var id = picked ? +picked.value : 0;
+    log('POST btnSaveRestrictions_Click  Request.Form["RoadRestrictions1$pick"] = "' + (id || "") + '"');
+    if (id && !rows.some(function (r) { return r.TypeId === id; })) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); }
+    editIndex = -1;
+    render();
+    return;
+  }
   var ticked = [];
   document.querySelectorAll("#RoadRestrictions1_rpBody .rp-item").forEach(function (item) {
     if (item.querySelector("input[type=checkbox]").checked) ticked.push(+item.querySelector("input[type=hidden]").value);
@@ -140,6 +160,11 @@ document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = funct
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
   editIndex = -1;
+  render();
+};
+
+document.getElementById("demoAllowMultiple").onchange = function () {
+  log('GET page reloaded with AllowMultiple="' + this.checked + '"');
   render();
 };
 

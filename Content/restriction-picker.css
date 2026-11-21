@@ -32,6 +32,9 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   /* page behind doesn'
 .rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
 .rp-overlay .rp-name { display: block; font-size: 17px; }
 .rp-overlay .rp-desc { display: block; margin-top: 4px; font-size: 15px; color: #555; }
+/* AllowMultiple="false": restrictions already on the route */
+.rp-overlay .rp-item:has(input:disabled) { cursor: default; color: #777; background: none; }
+.rp-overlay .rp-tag { display: block; margin-top: 2px; font-size: 13px; font-weight: bold; color: #555; }
 .rp-overlay .rp-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ccc; }
 .rp-overlay .rp-btn { flex: 1; padding: 14px; font: inherit; border: 1px solid #ccc; border-radius: 4px;
   background: #fff; color: #222; cursor: pointer; }
