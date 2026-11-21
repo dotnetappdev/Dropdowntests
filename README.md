@@ -89,6 +89,7 @@ In both modes, **Edit** on a row shows its restriction as a dropdown. Restrictio
 Without JavaScript a real `<select>` can't open full screen, so the row shows a button with Bootstrap's `form-select` look that opens a popover:
 
 - `gvRestrictions_RowDataBound` binds the row's `rptPick` Repeater: one radio per restriction, the saved one checked, ones on other rows disabled.
+- The list looks like the tick list (same square tick boxes), but only one restriction can be ticked: ticking another moves the tick. It stays open until you press Update or Cancel, or close it.
 - The radios are plain HTML inputs that share one name (the row's `UniqueID + "$pick"`), because `asp:RadioButton` inside a Repeater gives each item its own group. `RowUpdating` reads the choice from `Request.Form`.
 - The control includes the picker's own styles (a scoped `<style>` block), so the full-screen list fills the screen and lays out correctly even if `restriction-picker.css` is missing or an older copy. A popover always shows above the rest of the page, whatever `z-index` other elements use.
 - The dropdown's text changes after Update (changing it straight away would need JavaScript). Until then the row shows "New restriction chosen. Press Update to save it.", done with CSS.

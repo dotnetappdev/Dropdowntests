@@ -50,7 +50,10 @@
   .rp-overlay .rp-group { padding: .75rem 1rem .375rem; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #6c757d; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
   .rp-overlay .rp-item { display: flex; gap: .75rem; align-items: flex-start; margin: 0; padding: .75rem 1rem; border-bottom: 1px solid #dee2e6; cursor: pointer; font-weight: 400; }
   .rp-overlay .rp-item:hover { background-color: #f8f9fa; }
-  .rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; accent-color: #0d6efd; }
+  .rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; -webkit-appearance: none; appearance: none; display: inline-grid; place-content: center; background-color: #fff; border: 1px solid #adb5bd; border-radius: .25rem; cursor: pointer; }
+  .rp-overlay .rp-item input:checked { background-color: #0d6efd; border-color: #0d6efd; }
+  .rp-overlay .rp-item input:checked::after { content: ""; width: .35rem; height: .65rem; margin-top: -.15rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .rp-overlay .rp-item input:disabled { background-color: #e9ecef; cursor: default; }
   .rp-overlay .rp-item input:focus-visible { outline: 0; box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25); }
   .rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
   .rp-overlay .rp-name { display: block; }
@@ -165,7 +168,7 @@ function render() {
       '<span id="lblRowError" class="text-danger small"></span>' +
       '<div id="' + pid + '" popover class="rp-overlay" role="dialog" aria-label="Obstruction / restriction">' +
         '<div class="rp-head d-flex align-items-start gap-2"><div class="flex-grow-1"><h5 class="rp-title">Obstruction / restriction</h5>' +
-        '<div class="rp-sub">Choose a restriction, then press Update. Close (&times;) to go back to the notes.</div></div>' +
+        '<div class="rp-sub">Tick one restriction, then press Update. Close (&times;) to go back to the notes.</div></div>' +
         '<button type="button" class="btn-close" aria-label="Back to the notes" popovertarget="' + pid + '" popovertargetaction="hide"></button></div>' +
         '<div class="rp-body">' + items + '</div>' +
         '<div class="rp-bar"><a href="#" class="btn btn-outline-secondary" onclick="return post(\'Cancel$' + i + '\')">Cancel</a>' +
