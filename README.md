@@ -75,6 +75,7 @@ In both modes, **Edit** on a row shows its restriction as a dropdown list. Restr
 
 - It is filled in `gvRestrictions_RowDataBound` with `FillRestrictions(ddl)` and `ddl.SelectedValue = ...`, like any DropDownList. `RowUpdating` reads `ddl.SelectedValue`.
 - Clicking or tapping it opens the full-screen list instead of the browser's own popup. With the keyboard, Enter, Space or Alt+Down opens it.
+- The list looks and works like the tick list (same square tick boxes, same header), but only one restriction can be ticked: ticking another moves the tick. It stays open until you press Update or Cancel.
 - The full-screen list sets its own position and a very high `z-index`, so it fills the screen above menus and headers even if `restriction-picker.css` isn't loaded. Load the CSS anyway for the styling.
 - The row's Update and Cancel links have the classes `gv-update` and `gv-cancel`, which is how the full-screen list finds them.
 

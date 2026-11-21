@@ -44,7 +44,11 @@
 .rp-overlay .rp-item { display: flex; gap: .75rem; align-items: flex-start; margin: 0; padding: .75rem 1rem;
   border-bottom: 1px solid #dee2e6; cursor: pointer; font-weight: 400; }
 .rp-overlay .rp-item:hover { background-color: #f8f9fa; }
-.rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; accent-color: #0d6efd; }
+/* Tick boxes: the same square look whether you can tick several (checkboxes) or one (radios) */
+.rp-overlay .rp-item input { flex: none; width: 1.125rem; height: 1.125rem; margin: .2rem 0 0; -webkit-appearance: none; appearance: none; display: inline-grid; place-content: center; background-color: #fff; border: 1px solid #adb5bd; border-radius: .25rem; cursor: pointer; }
+.rp-overlay .rp-item input:checked { background-color: #0d6efd; border-color: #0d6efd; }
+.rp-overlay .rp-item input:checked::after { content: ""; width: .35rem; height: .65rem; margin-top: -.15rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.rp-overlay .rp-item input:disabled { background-color: #e9ecef; cursor: default; }
 .rp-overlay .rp-item input:focus-visible { outline: 0; box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25); }
 .rp-overlay .rp-text { flex: 1; min-width: 0; max-width: 75ch; overflow-wrap: anywhere; }
 .rp-overlay .rp-name { display: block; }
@@ -73,7 +77,8 @@
             ontouchend="return RestrictionPicker.selectDown(this, event)"
             onkeydown="return RestrictionPicker.selectKey(this, event)" />
       Clicking or tapping it opens the full-screen list instead of the browser's own popup.
-      Tapping a restriction sets the dropdown and closes the list.
+      It looks and works like the tick list, but only one restriction can be ticked; ticking
+      another moves the tick. Update sets the dropdown and presses the row's Update.
       The list's Update and Cancel press the row's own Update and Cancel (links with class
       gv-update and gv-cancel), so RowUpdating / RowCancelingEdit run as normal.
 
@@ -114,7 +119,10 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     '.rp-overlay .rp-item.on{background:#e7f1ff}',
     '.rp-overlay .rp-done{cursor:default;opacity:.65}',
     '.rp-overlay .rp-done:hover{background:transparent}',
-    '.rp-overlay .rp-item input{flex:none;width:1.125rem;height:1.125rem;margin:.2rem 0 0;accent-color:#0d6efd}',
+    '.rp-overlay .rp-item input{flex:none;width:1.125rem;height:1.125rem;margin:.2rem 0 0;-webkit-appearance:none;appearance:none;display:inline-grid;place-content:center;background-color:#fff;border:1px solid #adb5bd;border-radius:.25rem;cursor:pointer;}',
+    '.rp-overlay .rp-item input:checked{background-color:#0d6efd;border-color:#0d6efd;}',
+    '.rp-overlay .rp-item input:checked::after{content:\"\";width:.35rem;height:.65rem;margin-top:-.15rem;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}',
+    '.rp-overlay .rp-item input:disabled{background-color:#e9ecef;cursor:default;}',
     '.rp-overlay .rp-text{flex:1;min-width:0;max-width:75ch;overflow-wrap:anywhere}',
     '.rp-overlay .rp-name{display:block}',
     '.rp-overlay .rp-desc{display:block;margin:.25rem 0 0;font-size:.875rem;color:#6c757d}',
@@ -186,7 +194,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
         if (!on && b.was) rem++;
       }
       if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
-      else sub.textContent = chosen ? 'Selected: ' + chosen.opt.text : (o.prompt || 'Choose one');
+      else sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
       return chosen;
     }
     function apply() {                      // copy the choice back into the real list
@@ -244,7 +252,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     while (row && row.tagName !== 'TR') row = row.parentNode;
     var update = row && row.querySelector('.gv-update'), cancel = row && row.querySelector('.gv-cancel');
     show(select, {
-      multi: false, closeOnPick: true, prompt: 'Choose a restriction',
+      multi: false, prompt: 'Choose a restriction',
       okText: update ? update.textContent : 'Done',
       onOk: function () { if (update) update.click(); },
       onCancel: function () { if (cancel) cancel.click(); },
