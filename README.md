@@ -64,17 +64,18 @@ In both modes, **Edit** on a row shows its restriction as a dropdown list. Restr
 
 ```aspx
 <EditItemTemplate>
-  <div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector('select'))">
-    <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
-        data-title="Obstruction / restriction"
-        onkeydown="return RestrictionPicker.selectKey(this, event)" />
-  </div>
+  <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+      data-title="Obstruction / restriction"
+      onmousedown="return RestrictionPicker.selectDown(this, event)"
+      ontouchend="return RestrictionPicker.selectDown(this, event)"
+      onkeydown="return RestrictionPicker.selectKey(this, event)" />
   ...
 </EditItemTemplate>
 ```
 
 - It is filled in `gvRestrictions_RowDataBound` with `FillRestrictions(ddl)` and `ddl.SelectedValue = ...`, like any DropDownList. `RowUpdating` reads `ddl.SelectedValue`.
-- The wrapper `div` takes taps and opens the full-screen list. With the keyboard, Enter, Space or Alt+Down on the dropdown opens it.
+- Clicking or tapping it opens the full-screen list instead of the browser's own popup. With the keyboard, Enter, Space or Alt+Down opens it.
+- The full-screen list sets its own position and a very high `z-index`, so it fills the screen above menus and headers even if `restriction-picker.css` isn't loaded. Load the CSS anyway for the styling.
 - The row's Update and Cancel links have the classes `gv-update` and `gv-cancel`, which is how the full-screen list finds them.
 
 ### Descriptions and groups

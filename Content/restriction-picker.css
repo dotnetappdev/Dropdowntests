@@ -36,14 +36,10 @@
 .rp-overlay .rp-bar { display: flex; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #fff; }
 .rp-overlay .rp-bar .btn { flex: 1; padding-top: .625rem; padding-bottom: .625rem; }
 
-/* Overlay position (the script adds it to the page when opened and removes it when closed) */
-.rp-overlay { position: fixed; inset: 0; z-index: 1060; display: flex; flex-direction: column; }
+/* Overlay position (the script adds it to the page when opened and removes it when closed).
+   The script also sets these inline, so the list is full screen even without this file. */
+.rp-overlay { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column; }
 .rp-overlay .rp-item.on { background-color: #e7f1ff; }
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
 .rp-overlay .btn:disabled { pointer-events: none; }
-
-/* Dropdown list in a grid row: taps go to the wrapper, which opens the full-screen list.
-   The dropdown itself still takes keyboard focus (Enter, Space or Alt+Down opens the list). */
-.rp-select { cursor: pointer; }
-.rp-select select { pointer-events: none; }

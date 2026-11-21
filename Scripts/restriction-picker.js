@@ -2,11 +2,12 @@
    Full-screen list for the restriction dropdowns, so long descriptions are readable on any screen.
 
    1. A dropdown list in a GridView row (an ordinary asp:DropDownList, filled in C#):
-        <div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector('select'))">
-          <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
-              onkeydown="return RestrictionPicker.selectKey(this, event)" />
-        </div>
-      Tapping it opens the full-screen list. Tapping a restriction sets the dropdown and closes the list.
+        <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+            onmousedown="return RestrictionPicker.selectDown(this, event)"
+            ontouchend="return RestrictionPicker.selectDown(this, event)"
+            onkeydown="return RestrictionPicker.selectKey(this, event)" />
+      Clicking or tapping it opens the full-screen list instead of the browser's own popup.
+      Tapping a restriction sets the dropdown and closes the list.
       The list's Update and Cancel press the row's own Update and Cancel (links with class
       gv-update and gv-cancel), so RowUpdating / RowCancelingEdit run as normal.
 
@@ -19,6 +20,9 @@
    - A disabled item with an empty value is a group heading.
    - A disabled item with data-attached="true" is shown greyed out as "Already added".
 
+   The overlay carries its own layout and styles, with a very high z-index, so it fills the screen,
+   sits above menus and headers, and renders correctly even if restriction-picker.css is missing.
+
    Safe alongside the rest of the app: it does nothing until called, adds no page-wide event
    listeners, defines one global (RestrictionPicker), and the overlay is removed when it closes. */
 window.RestrictionPicker = window.RestrictionPicker || (function () {
@@ -28,6 +32,31 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     if (text != null) e.textContent = text;
     return e;
   }
+
+  // The picker's own styles, scoped to .rp-overlay and removed with it. They make it render
+  // correctly even if restriction-picker.css is missing or an older copy; Bootstrap's .btn classes
+  // still style the buttons when Bootstrap is on the page.
+  var BASE_CSS = [
+    '.rp-overlay{background:#fff;color:#212529;font-size:1rem;line-height:1.5;text-align:left}',
+    '.rp-overlay *{box-sizing:border-box}',
+    '.rp-overlay .rp-head{padding:1rem;border-bottom:1px solid #dee2e6}',
+    '.rp-overlay .rp-title{margin:0;font-size:1.25rem;font-weight:500;line-height:1.2}',
+    '.rp-overlay .rp-sub{margin-top:.25rem;font-size:.875rem;color:#6c757d}',
+    '.rp-overlay .rp-group{padding:.75rem 1rem .375rem;font-size:.75rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#6c757d;background:#f8f9fa;border-bottom:1px solid #dee2e6}',
+    '.rp-overlay .rp-item{display:flex;gap:.75rem;align-items:flex-start;margin:0;padding:.75rem 1rem;border-bottom:1px solid #dee2e6;cursor:pointer;font-weight:400}',
+    '.rp-overlay .rp-item:hover{background:#f8f9fa}',
+    '.rp-overlay .rp-item.on{background:#e7f1ff}',
+    '.rp-overlay .rp-done{cursor:default;opacity:.65}',
+    '.rp-overlay .rp-done:hover{background:transparent}',
+    '.rp-overlay .rp-item input{flex:none;width:1.125rem;height:1.125rem;margin:.2rem 0 0;accent-color:#0d6efd}',
+    '.rp-overlay .rp-text{flex:1;min-width:0;max-width:75ch;overflow-wrap:anywhere}',
+    '.rp-overlay .rp-name{display:block}',
+    '.rp-overlay .rp-desc{display:block;margin:.25rem 0 0;font-size:.875rem;color:#6c757d}',
+    '.rp-overlay .rp-tag{display:inline-block;margin-top:.25rem;padding:.35em .65em;font-size:.75em;font-weight:700;line-height:1;color:#fff;background:#6c757d;border-radius:.375rem}',
+    '.rp-overlay .rp-bar{padding:.75rem 1rem;border-top:1px solid #dee2e6;background:#fff}',
+    '.rp-overlay .rp-bar button{padding:.625rem .75rem;font:inherit;border-radius:.375rem;cursor:pointer}',
+    '.rp-overlay .rp-bar button:disabled{opacity:.65;pointer-events:none}'
+  ].join('\n');
 
   // o: { multi, okText, prompt, closeOnPick, onOk, onCancel, onClose }
   function show(list, o) {
@@ -41,11 +70,18 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
     ov.setAttribute('aria-label', title);
+    // Full screen and on top even if restriction-picker.css is missing, older, or overridden
+    ov.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;display:flex;' +
+      'flex-direction:column;margin:0;background-color:#fff;';
+    body.style.cssText = 'flex:1 1 auto;min-height:0;overflow-y:auto;';
+    bar.style.cssText = 'display:flex;gap:.5rem;';
+    cancel.style.flex = ok.style.flex = '1';
     cancel.type = ok.type = 'button';
     head.appendChild(el('h5', 'rp-title', title));
     head.appendChild(sub);
     bar.appendChild(cancel);
     bar.appendChild(ok);
+    ov.appendChild(el('style', null, BASE_CSS));
     ov.appendChild(head);
     ov.appendChild(body);
     ov.appendChild(bar);
@@ -150,6 +186,14 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     });
   }
 
+  // Mouse or touch on the dropdown: stop the browser's own popup and open the full-screen list
+  function selectDown(select, e) {
+    if (e.button > 0) return true;          // only the main button
+    if (e.preventDefault) e.preventDefault();
+    fromSelect(select);
+    return false;
+  }
+
   // Keyboard on the dropdown: Enter, Space, Alt+Down or F4 open the full-screen list
   function selectKey(select, e) {
     var k = e.key || '';
@@ -161,5 +205,5 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     return true;
   }
 
-  return { open: open, fromSelect: fromSelect, selectKey: selectKey };
+  return { open: open, fromSelect: fromSelect, selectDown: selectDown, selectKey: selectKey };
 })();

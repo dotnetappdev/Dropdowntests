@@ -34,11 +34,11 @@
       <EditItemTemplate>
         <%-- The old-style dropdown list, filled in code-behind (RowDataBound). Tapping it opens the
              full-screen list; that list's Update and Cancel press this row's Update and Cancel. --%>
-        <div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector('select'))">
-          <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
-              data-title="Obstruction / restriction"
-              onkeydown="return RestrictionPicker.selectKey(this, event)" />
-        </div>
+        <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+            data-title="Obstruction / restriction"
+            onmousedown="return RestrictionPicker.selectDown(this, event)"
+            ontouchend="return RestrictionPicker.selectDown(this, event)"
+            onkeydown="return RestrictionPicker.selectKey(this, event)" />
         <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small" EnableViewState="false" />
         <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4" CssClass="form-control mt-2"
             Text='<%# Bind("Notes") %>' />
