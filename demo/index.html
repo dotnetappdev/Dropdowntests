@@ -36,7 +36,7 @@
   <div class="alert alert-secondary py-2">
     <div class="form-check form-switch m-0">
       <input class="form-check-input" type="checkbox" role="switch" id="demoAllowMultiple" checked>
-      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: Add restriction opens a tick list. Off: it adds a new row with a dropdown)</label>
+      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: tick several restrictions. Off: the same list, but only one can be ticked)</label>
     </div>
   </div>
 
@@ -45,7 +45,6 @@
     <h3 class="h4 m-0">Route obstructions and restrictions</h3>
     <button type="button" class="btn btn-primary" id="RoadRestrictions1_btnPickMany"
       onclick="RestrictionPicker.open('RoadRestrictions1_lstRestrictions', 'RoadRestrictions1_btnSaveRestrictions')">Add restriction</button>
-    <input type="submit" class="btn btn-primary" id="RoadRestrictions1_btnAddRow" name="RoadRestrictions1$btnAddRow" value="Add restriction" hidden>
   </div>
   <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
     data-title="Restrictions on this route" style="display:none"></select>
@@ -84,7 +83,7 @@ groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types
 function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
 function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
 
-var nextId = 1, editIndex = -1, adding = false;
+var nextId = 1, editIndex = -1;
 var rows = [
   { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
   { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
@@ -103,18 +102,17 @@ function multi() { return document.getElementById("demoAllowMultiple").checked; 
 function fillOptions(opts) {   // opts: { selected: [ids], taken: [ids], placeholder: bool }
   var o = opts.placeholder ? '<option value="">-- Select a restriction --</option>' : '', g = null;
   types.forEach(function (t) {
-    var taken = opts.taken && opts.taken.indexOf(t.id) >= 0;
+    var taken = opts.taken && opts.taken.indexOf(t.id) >= 0, marked = opts.marked && opts.marked.indexOf(t.id) >= 0;
     if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
     o += '<option value="' + t.id + '"' + (opts.selected.indexOf(t.id) >= 0 ? ' selected' : '') +
-      (taken ? ' disabled data-attached="true"' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+      (taken ? ' disabled data-attached="true"' : '') + (marked ? ' data-attached="true"' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
   });
   return o;
 }
 
 function render() {
-  // GridView (plus the new, unsaved row while adding)
-  var list = rows.slice();
-  if (adding) { list.push({ Id: 0, TypeId: 0, Notes: "" }); editIndex = list.length - 1; }
+  // GridView
+  var list = rows;
   var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
   if (!list.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
   list.forEach(function (r, i) {
@@ -137,54 +135,54 @@ function render() {
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
-  // OnPreRender: AllowMultiple picks which Add button shows; the tick list is filled with attached ones ticked
-  document.getElementById("RoadRestrictions1_btnPickMany").hidden = !multi();
-  document.getElementById("RoadRestrictions1_btnAddRow").hidden = multi();
-  lst.innerHTML = fillOptions({ selected: rows.map(function (r) { return r.TypeId; }) });
+  // OnInit / OnPreRender: AllowMultiple sets the list box's selection mode. Several: attached ones ticked.
+  // One: attached ones marked data-attached (ticked, greyed out, "Already added").
+  var attachedIds = rows.map(function (r) { return r.TypeId; });
+  lst.multiple = multi();
+  lst.innerHTML = multi() ? fillOptions({ selected: attachedIds }) : fillOptions({ selected: [], marked: attachedIds });
+  if (!multi()) lst.selectedIndex = -1;
 }
 
 function post(arg) {
   var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
   log("POST " + GV + "  " + arg);
-  if (cmd === "Edit") { adding = false; editIndex = i; log("  RowEditing"); }
-  if (cmd === "Cancel") { adding = false; editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
+  if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
   if (cmd === "Update") {
     var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
     log("  RowUpdating  ddlRestriction.SelectedValue = \"" + ddl.value + "\"");
     if (!typeId) { document.getElementById("lblRowError").textContent = "Choose a restriction."; log("  Nothing chosen: row stays in edit mode"); return false; }
-    if (adding && i === rows.length) { rows.push({ Id: nextId++, TypeId: typeId, Notes: notes }); adding = false; log("  Attach " + typeName(typeId)); }
-    else { rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId)); }
+    rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId));
     editIndex = -1;
   }
   render();
   return false;
 }
 
-// AllowMultiple="false": Add restriction adds a new row in edit mode
-document.getElementById("RoadRestrictions1_btnAddRow").onclick = function (e) {
-  e.preventDefault();
-  log("POST btnAddRow_Click: new row in edit mode");
-  adding = true;
-  render();
-  var box = document.querySelector(".grid-box"); box.scrollTop = box.scrollHeight;
-};
-
-// AllowMultiple="true": the tick list's hidden Save button
+// The full-screen list's hidden Save button
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
+  if (!multi()) {
+    var v = lst.value, id = +v;
+    log('POST btnSaveRestrictions_Click  lstRestrictions.SelectedValue = "' + v + '"');
+    if (id && !rows.some(function (r) { return r.TypeId === id; })) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); }
+    editIndex = -1;
+    render();
+    return;
+  }
   var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
   log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
   var attached = rows.map(function (r) { return r.TypeId; });
   rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 
 document.getElementById("demoAllowMultiple").onchange = function () {
   log("GET page reloaded with AllowMultiple=\"" + this.checked + "\"");
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 

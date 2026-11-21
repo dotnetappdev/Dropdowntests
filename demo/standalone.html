@@ -82,14 +82,16 @@
       The list's Update and Cancel press the row's own Update and Cancel (links with class
       gv-update and gv-cancel), so RowUpdating / RowCancelingEdit run as normal.
 
-   2. A tick list to add several at once, from a hidden <asp:ListBox SelectionMode="Multiple">:
+   2. The Add restriction list, from a hidden asp:ListBox:
         RestrictionPicker.open(listBoxClientId, saveButtonClientId)
+      SelectionMode="Multiple": tick several. SelectionMode="Single": the same list, but only one can
+      be ticked; restrictions already on the route (data-attached="true") show ticked and greyed out.
       Save copies the ticks into the list box and clicks the hidden Save button (a normal postback).
 
    In both lists:
    - An item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
    - A disabled item with an empty value is a group heading.
-   - A disabled item with data-attached="true" is shown greyed out as "Already added".
+   - In a one-choice list, an item with data-attached="true" shows ticked, greyed out and "Already added".
 
    The overlay carries its own layout and styles, with a very high z-index, so it fills the screen,
    sits above menus and headers, and renders correctly even if restriction-picker.css is missing.
@@ -132,7 +134,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     '.rp-overlay .rp-bar button:disabled{opacity:.65;pointer-events:none}'
   ].join('\n');
 
-  // o: { multi, okText, prompt, closeOnPick, onOk, onCancel, onClose }
+  // o: { multi, okText, prompt, requireChoice, closeOnPick, onOk, onCancel, onClose }
   function show(list, o) {
     if (document.querySelector('.rp-overlay')) return;   // already open
     var multi = o.multi, root = document.documentElement, oldOverflow = root.style.overflow;
@@ -169,10 +171,12 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
         continue;
       }
       var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
-      var already = opt.getAttribute('data-attached') === 'true';
-      cb.type = multi ? 'checkbox' : 'radio';
-      if (!multi) cb.name = 'rp-pick';      // groups the radios; the overlay is outside the form, so it never posts
-      cb.checked = opt.selected;
+      var already = !multi && opt.getAttribute('data-attached') === 'true';
+      // One choice: radios (styled as tick boxes) so only one can be ticked. Restrictions already
+      // on the route show ticked and greyed out, like the tick list, but can't be chosen again.
+      cb.type = multi || already ? 'checkbox' : 'radio';
+      if (cb.type === 'radio') cb.name = 'rp-pick';   // the overlay is outside the form, so it never posts
+      cb.checked = opt.selected || already;
       cb.disabled = opt.disabled || already;
       text.appendChild(el('div', 'rp-name', opt.text));
       if (already) { item.className = 'rp-item rp-done'; text.appendChild(el('div', 'rp-tag', 'Already added')); }
@@ -189,12 +193,15 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       for (var i = 0; i < boxes.length; i++) {
         var b = boxes[i], on = b.cb.checked;
         if (!b.cb.disabled) b.item.className = on ? 'rp-item on' : 'rp-item';
-        if (on) { n++; chosen = b; }
+        if (on && (multi || !b.cb.disabled)) { n++; chosen = b; }
         if (on && !b.was) add++;
         if (!on && b.was) rem++;
       }
       if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
-      else sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
+      else {
+        sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
+        if (o.requireChoice) ok.disabled = !chosen;
+      }
       return chosen;
     }
     function apply() {                      // copy the choice back into the real list
@@ -239,7 +246,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     if (!list || !save) return;
     var opener = document.activeElement;
     show(list, {
-      multi: list.multiple, okText: save.value || 'Save', prompt: 'Choose one restriction to add',
+      multi: list.multiple, okText: save.value || 'Save', prompt: 'Tick one restriction to add', requireChoice: !list.multiple,
       onOk: function () { save.click(); },
       onClose: function () { if (opener && opener.focus) opener.focus(); }
     });
@@ -309,7 +316,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
   <div class="alert alert-secondary py-2">
     <div class="form-check form-switch m-0">
       <input class="form-check-input" type="checkbox" role="switch" id="demoAllowMultiple" checked>
-      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: Add restriction opens a tick list. Off: it adds a new row with a dropdown)</label>
+      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: tick several restrictions. Off: the same list, but only one can be ticked)</label>
     </div>
   </div>
 
@@ -318,7 +325,6 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     <h3 class="h4 m-0">Route obstructions and restrictions</h3>
     <button type="button" class="btn btn-primary" id="RoadRestrictions1_btnPickMany"
       onclick="RestrictionPicker.open('RoadRestrictions1_lstRestrictions', 'RoadRestrictions1_btnSaveRestrictions')">Add restriction</button>
-    <input type="submit" class="btn btn-primary" id="RoadRestrictions1_btnAddRow" name="RoadRestrictions1$btnAddRow" value="Add restriction" hidden>
   </div>
   <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
     data-title="Restrictions on this route" style="display:none"></select>
@@ -357,7 +363,7 @@ groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types
 function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
 function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
 
-var nextId = 1, editIndex = -1, adding = false;
+var nextId = 1, editIndex = -1;
 var rows = [
   { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
   { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
@@ -376,18 +382,17 @@ function multi() { return document.getElementById("demoAllowMultiple").checked; 
 function fillOptions(opts) {   // opts: { selected: [ids], taken: [ids], placeholder: bool }
   var o = opts.placeholder ? '<option value="">-- Select a restriction --</option>' : '', g = null;
   types.forEach(function (t) {
-    var taken = opts.taken && opts.taken.indexOf(t.id) >= 0;
+    var taken = opts.taken && opts.taken.indexOf(t.id) >= 0, marked = opts.marked && opts.marked.indexOf(t.id) >= 0;
     if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
     o += '<option value="' + t.id + '"' + (opts.selected.indexOf(t.id) >= 0 ? ' selected' : '') +
-      (taken ? ' disabled data-attached="true"' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+      (taken ? ' disabled data-attached="true"' : '') + (marked ? ' data-attached="true"' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
   });
   return o;
 }
 
 function render() {
-  // GridView (plus the new, unsaved row while adding)
-  var list = rows.slice();
-  if (adding) { list.push({ Id: 0, TypeId: 0, Notes: "" }); editIndex = list.length - 1; }
+  // GridView
+  var list = rows;
   var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
   if (!list.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
   list.forEach(function (r, i) {
@@ -410,54 +415,54 @@ function render() {
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
-  // OnPreRender: AllowMultiple picks which Add button shows; the tick list is filled with attached ones ticked
-  document.getElementById("RoadRestrictions1_btnPickMany").hidden = !multi();
-  document.getElementById("RoadRestrictions1_btnAddRow").hidden = multi();
-  lst.innerHTML = fillOptions({ selected: rows.map(function (r) { return r.TypeId; }) });
+  // OnInit / OnPreRender: AllowMultiple sets the list box's selection mode. Several: attached ones ticked.
+  // One: attached ones marked data-attached (ticked, greyed out, "Already added").
+  var attachedIds = rows.map(function (r) { return r.TypeId; });
+  lst.multiple = multi();
+  lst.innerHTML = multi() ? fillOptions({ selected: attachedIds }) : fillOptions({ selected: [], marked: attachedIds });
+  if (!multi()) lst.selectedIndex = -1;
 }
 
 function post(arg) {
   var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
   log("POST " + GV + "  " + arg);
-  if (cmd === "Edit") { adding = false; editIndex = i; log("  RowEditing"); }
-  if (cmd === "Cancel") { adding = false; editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
+  if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
   if (cmd === "Update") {
     var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
     log("  RowUpdating  ddlRestriction.SelectedValue = \"" + ddl.value + "\"");
     if (!typeId) { document.getElementById("lblRowError").textContent = "Choose a restriction."; log("  Nothing chosen: row stays in edit mode"); return false; }
-    if (adding && i === rows.length) { rows.push({ Id: nextId++, TypeId: typeId, Notes: notes }); adding = false; log("  Attach " + typeName(typeId)); }
-    else { rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId)); }
+    rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId));
     editIndex = -1;
   }
   render();
   return false;
 }
 
-// AllowMultiple="false": Add restriction adds a new row in edit mode
-document.getElementById("RoadRestrictions1_btnAddRow").onclick = function (e) {
-  e.preventDefault();
-  log("POST btnAddRow_Click: new row in edit mode");
-  adding = true;
-  render();
-  var box = document.querySelector(".grid-box"); box.scrollTop = box.scrollHeight;
-};
-
-// AllowMultiple="true": the tick list's hidden Save button
+// The full-screen list's hidden Save button
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
+  if (!multi()) {
+    var v = lst.value, id = +v;
+    log('POST btnSaveRestrictions_Click  lstRestrictions.SelectedValue = "' + v + '"');
+    if (id && !rows.some(function (r) { return r.TypeId === id; })) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); }
+    editIndex = -1;
+    render();
+    return;
+  }
   var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
   log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
   var attached = rows.map(function (r) { return r.TypeId; });
   rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 
 document.getElementById("demoAllowMultiple").onchange = function () {
   log("GET page reloaded with AllowMultiple=\"" + this.checked + "\"");
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 

@@ -3,16 +3,14 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h3 class="h4 m-0">Route obstructions and restrictions</h3>
-  <%-- AllowMultiple="true": opens the full-screen tick list to add several at once (no postback).
-       Its onclick is set in code-behind. --%>
+  <%-- Opens the full-screen list: tick several (AllowMultiple="true") or one (AllowMultiple="false").
+       No postback; its onclick is set in code-behind. --%>
   <button type="button" id="btnPickMany" runat="server" class="btn btn-primary">Add restriction</button>
-  <%-- AllowMultiple="false": adds a new row to the grid with a dropdown to choose the restriction --%>
-  <asp:Button ID="btnAddRow" runat="server" Text="Add restriction" CssClass="btn btn-primary"
-      CausesValidation="false" OnClick="btnAddRow_Click" />
 </div>
 
-<%-- AllowMultiple="true" only: the hidden source list for the tick list, and the Save button it clicks --%>
-<asp:ListBox ID="lstRestrictions" runat="server" SelectionMode="Multiple"
+<%-- The hidden source list for the full-screen list (SelectionMode is set from AllowMultiple),
+     and the Save button it clicks --%>
+<asp:ListBox ID="lstRestrictions" runat="server"
     data-title="Restrictions on this route" Style="display:none" />
 <asp:Button ID="btnSaveRestrictions" runat="server" Text="Save" CausesValidation="false"
     OnClick="btnSaveRestrictions_Click" Style="display:none" />

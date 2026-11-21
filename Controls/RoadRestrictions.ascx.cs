@@ -12,18 +12,19 @@ namespace DropdownTests.Controls
         public int RouteId { get; set; }
 
         /// <summary>
-        /// true (default): Add restriction opens a full-screen tick list to add or remove several at once.
-        /// false: Add restriction adds a new row to the grid with a dropdown to choose one restriction.
-        /// Either way, editing a row shows the restriction as a dropdown that opens full screen.
+        /// Add restriction opens the same full-screen list either way.
+        /// true (default): tick several; Save attaches the ticked ones and detaches the unticked ones.
+        /// false: only one can be ticked; Save adds it. Ones already on the route show ticked and greyed out.
+        /// Editing a row always shows its restriction as a dropdown that opens full screen.
         /// Set it in markup, e.g. AllowMultiple="false".
         /// </summary>
         public bool AllowMultiple { get; set; } = true;
 
-        /// <summary>True while the grid shows a new, unsaved row (Add restriction with AllowMultiple="false").</summary>
-        private bool Adding
+        protected override void OnInit(EventArgs e)
         {
-            get { return (bool?)ViewState["Adding"] ?? false; }
-            set { ViewState["Adding"] = value; }
+            base.OnInit(e);
+            // Set before the posted selection is loaded, so a single list reads one value
+            lstRestrictions.SelectionMode = AllowMultiple ? ListSelectionMode.Multiple : ListSelectionMode.Single;
         }
 
         protected void Page_Load(object sender, EventArgs e)
@@ -37,21 +38,8 @@ namespace DropdownTests.Controls
 
         private void BindGrid()
         {
-            var rows = RouteRestrictions.GetForRoute(RouteId).ToList();   // the attached ones
-            if (Adding)
-            {
-                rows.Add(new RouteRestriction { Id = 0, RouteId = RouteId, Notes = "" });   // the new, unsaved row
-                gvRestrictions.EditIndex = rows.Count - 1;
-            }
-            gvRestrictions.DataSource = rows;
+            gvRestrictions.DataSource = RouteRestrictions.GetForRoute(RouteId);   // the attached ones
             gvRestrictions.DataBind();
-        }
-
-        // AllowMultiple="false": add a new row in edit mode
-        protected void btnAddRow_Click(object sender, EventArgs e)
-        {
-            Adding = true;
-            BindGrid();
         }
 
         protected void gvRestrictions_RowDataBound(object sender, GridViewRowEventArgs e)
@@ -80,16 +68,12 @@ namespace DropdownTests.Controls
                     }
                 }
 
-                if (row.Id == 0)
-                    ddl.Items.Insert(0, new ListItem("-- Select a restriction --", ""));
-                else
-                    ddl.SelectedValue = row.RestrictionTypeId.ToString();
+                ddl.SelectedValue = row.RestrictionTypeId.ToString();
             }
         }
 
         protected void gvRestrictions_RowEditing(object sender, GridViewEditEventArgs e)
         {
-            Adding = false;                     // editing another row drops an unsaved new row
             gvRestrictions.EditIndex = e.NewEditIndex;
             BindGrid();
         }
@@ -109,15 +93,7 @@ namespace DropdownTests.Controls
                 return;
             }
 
-            if (id == 0)
-            {
-                RouteRestrictions.Attach(RouteId, typeId, txtNotes.Text);
-                Adding = false;
-            }
-            else
-            {
-                RouteRestrictions.Update(id, typeId, txtNotes.Text);
-            }
+            RouteRestrictions.Update(id, typeId, txtNotes.Text);
 
             gvRestrictions.EditIndex = -1;
             BindGrid();
@@ -125,14 +101,25 @@ namespace DropdownTests.Controls
 
         protected void gvRestrictions_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
-            Adding = false;
             gvRestrictions.EditIndex = -1;
             BindGrid();
         }
 
-        // AllowMultiple="true": the tick list's Save. Attach what is ticked, detach what was unticked.
+        // The full-screen list's Save.
+        // Several: attach what is ticked, detach what was unticked. One: attach the ticked restriction.
         protected void btnSaveRestrictions_Click(object sender, EventArgs e)
         {
+            if (!AllowMultiple)
+            {
+                int typeId;
+                if (int.TryParse(lstRestrictions.SelectedValue, out typeId) &&
+                    !RouteRestrictions.GetForRoute(RouteId).Any(a => a.RestrictionTypeId == typeId))
+                    RouteRestrictions.Attach(RouteId, typeId);
+                gvRestrictions.EditIndex = -1;
+                BindGrid();
+                return;
+            }
+
             var ticked = lstRestrictions.Items.Cast<ListItem>()
                 .Where(li => li.Selected && li.Value != "")
                 .Select(li => int.Parse(li.Value))
@@ -144,7 +131,6 @@ namespace DropdownTests.Controls
             foreach (var a in attached.Where(a => !ticked.Contains(a.RestrictionTypeId)))
                 RouteRestrictions.Detach(a.Id);
 
-            Adding = false;
             gvRestrictions.EditIndex = -1;
             BindGrid();
         }
@@ -153,21 +139,20 @@ namespace DropdownTests.Controls
         {
             base.OnPreRender(e);
 
-            btnPickMany.Visible = AllowMultiple;
-            btnAddRow.Visible = !AllowMultiple;
-            lstRestrictions.Visible = btnSaveRestrictions.Visible = AllowMultiple;
-            if (!AllowMultiple) return;
-
             btnPickMany.Attributes["onclick"] = string.Format("RestrictionPicker.open('{0}', '{1}')",
                 lstRestrictions.ClientID, btnSaveRestrictions.ClientID);
 
-            // Rebuild the tick list on every request so the descriptions are always rendered,
-            // and tick what is attached to this route
+            // Rebuild the list on every request so the descriptions are always rendered.
+            // Several: tick what is attached. One: mark what is attached ("Already added").
             var attachedIds = new HashSet<string>(RouteRestrictions.GetForRoute(RouteId)
                 .Select(a => a.RestrictionTypeId.ToString()));
             FillRestrictions(lstRestrictions);
             foreach (ListItem item in lstRestrictions.Items)
-                item.Selected = item.Value != "" && attachedIds.Contains(item.Value);
+            {
+                if (item.Value == "" || !attachedIds.Contains(item.Value)) continue;
+                if (AllowMultiple) item.Selected = true;
+                else item.Attributes["data-attached"] = "true";
+            }
         }
 
         /// <summary>

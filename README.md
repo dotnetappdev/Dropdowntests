@@ -55,8 +55,8 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 
 | `AllowMultiple` | What Add restriction does |
 | --- | --- |
-| `true` (default) | Opens a full-screen tick list. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
-| `false` | Adds a new row to the grid in edit mode, with an empty dropdown list ("-- Select a restriction --") and a Notes box. Choose the restriction, write the notes, then Update. Update with nothing chosen shows "Choose a restriction." and keeps the row open. |
+| `true` (default) | Opens the full-screen list with tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
+| `false` | Opens the same list, looking the same, but only one restriction can be ticked: ticking another moves the tick. Restrictions already on the route show ticked, greyed out and "Already added". Save adds the ticked one. |
 
 In both modes, **Edit** on a row shows its restriction as a dropdown list. Restrictions already on other rows are disabled in the dropdown and shown as "Already added" in the full-screen list.
 

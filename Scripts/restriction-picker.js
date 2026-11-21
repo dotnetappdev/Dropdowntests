@@ -12,14 +12,16 @@
       The list's Update and Cancel press the row's own Update and Cancel (links with class
       gv-update and gv-cancel), so RowUpdating / RowCancelingEdit run as normal.
 
-   2. A tick list to add several at once, from a hidden <asp:ListBox SelectionMode="Multiple">:
+   2. The Add restriction list, from a hidden asp:ListBox:
         RestrictionPicker.open(listBoxClientId, saveButtonClientId)
+      SelectionMode="Multiple": tick several. SelectionMode="Single": the same list, but only one can
+      be ticked; restrictions already on the route (data-attached="true") show ticked and greyed out.
       Save copies the ticks into the list box and clicks the hidden Save button (a normal postback).
 
    In both lists:
    - An item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
    - A disabled item with an empty value is a group heading.
-   - A disabled item with data-attached="true" is shown greyed out as "Already added".
+   - In a one-choice list, an item with data-attached="true" shows ticked, greyed out and "Already added".
 
    The overlay carries its own layout and styles, with a very high z-index, so it fills the screen,
    sits above menus and headers, and renders correctly even if restriction-picker.css is missing.
@@ -62,7 +64,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     '.rp-overlay .rp-bar button:disabled{opacity:.65;pointer-events:none}'
   ].join('\n');
 
-  // o: { multi, okText, prompt, closeOnPick, onOk, onCancel, onClose }
+  // o: { multi, okText, prompt, requireChoice, closeOnPick, onOk, onCancel, onClose }
   function show(list, o) {
     if (document.querySelector('.rp-overlay')) return;   // already open
     var multi = o.multi, root = document.documentElement, oldOverflow = root.style.overflow;
@@ -99,10 +101,12 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
         continue;
       }
       var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
-      var already = opt.getAttribute('data-attached') === 'true';
-      cb.type = multi ? 'checkbox' : 'radio';
-      if (!multi) cb.name = 'rp-pick';      // groups the radios; the overlay is outside the form, so it never posts
-      cb.checked = opt.selected;
+      var already = !multi && opt.getAttribute('data-attached') === 'true';
+      // One choice: radios (styled as tick boxes) so only one can be ticked. Restrictions already
+      // on the route show ticked and greyed out, like the tick list, but can't be chosen again.
+      cb.type = multi || already ? 'checkbox' : 'radio';
+      if (cb.type === 'radio') cb.name = 'rp-pick';   // the overlay is outside the form, so it never posts
+      cb.checked = opt.selected || already;
       cb.disabled = opt.disabled || already;
       text.appendChild(el('div', 'rp-name', opt.text));
       if (already) { item.className = 'rp-item rp-done'; text.appendChild(el('div', 'rp-tag', 'Already added')); }
@@ -119,12 +123,15 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       for (var i = 0; i < boxes.length; i++) {
         var b = boxes[i], on = b.cb.checked;
         if (!b.cb.disabled) b.item.className = on ? 'rp-item on' : 'rp-item';
-        if (on) { n++; chosen = b; }
+        if (on && (multi || !b.cb.disabled)) { n++; chosen = b; }
         if (on && !b.was) add++;
         if (!on && b.was) rem++;
       }
       if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
-      else sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
+      else {
+        sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
+        if (o.requireChoice) ok.disabled = !chosen;
+      }
       return chosen;
     }
     function apply() {                      // copy the choice back into the real list
@@ -169,7 +176,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     if (!list || !save) return;
     var opener = document.activeElement;
     show(list, {
-      multi: list.multiple, okText: save.value || 'Save', prompt: 'Choose one restriction to add',
+      multi: list.multiple, okText: save.value || 'Save', prompt: 'Tick one restriction to add', requireChoice: !list.multiple,
       onOk: function () { save.click(); },
       onClose: function () { if (opener && opener.focus) opener.focus(); }
     });
