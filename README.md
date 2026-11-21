@@ -4,6 +4,16 @@ An ASP.NET Web Forms user control for a heavy load route. It shows the restricti
 
 This is the version that uses a small JavaScript file. The picker works well on phones and on a PC.
 
+## Look and feel
+
+It is styled to match a new Visual Studio **ASP.NET Web Application (.NET Framework) › Web Forms** project, which uses Bootstrap 5's light theme:
+
+- The control uses Bootstrap's own classes: `btn btn-primary` for Add restriction, `table table-striped` on the GridView, and `form-control` on the Notes box. It picks up your site's Bootstrap automatically.
+- The picker's Save and Cancel buttons are `btn btn-primary` and `btn btn-outline-secondary`. The rest of the picker uses Bootstrap 5's default colours and spacing in `Content/restriction-picker.css`.
+- The demo pages are laid out like the template's `Site.Master`, with the dark navbar and footer.
+
+If your project uses an older template with Bootstrap 3, the control still works. The buttons and table will take Bootstrap 3's look instead.
+
 ## Try it without ASP.NET
 
 Open `demo/index.html` in a browser. It loads the real script and CSS from this repository and uses a fake server so you can click through it.
