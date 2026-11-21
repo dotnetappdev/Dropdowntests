@@ -42,3 +42,8 @@
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
 .rp-overlay .btn:disabled { pointer-events: none; }
+
+/* Dropdown list in a grid row: taps go to the wrapper, which opens the full-screen list.
+   The dropdown itself still takes keyboard focus (Enter, Space or Alt+Down opens the list). */
+.rp-select { cursor: pointer; }
+.rp-select select { pointer-events: none; }

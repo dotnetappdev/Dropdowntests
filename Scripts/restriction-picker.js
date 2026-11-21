@@ -1,21 +1,26 @@
 /* Scripts/restriction-picker.js
-   Full-screen tick list for a hidden <asp:ListBox SelectionMode="Multiple">.
+   Full-screen list for the restriction dropdowns, so long descriptions are readable on any screen.
 
-   Usage (from the user control):
-     <button type="button"
-         onclick="RestrictionPicker.open('<%= lstRestrictions.ClientID %>', '<%= btnSaveRestrictions.ClientID %>')">
-       Add restriction</button>
+   1. A dropdown list in a GridView row (an ordinary asp:DropDownList, filled in C#):
+        <div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector('select'))">
+          <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+              onkeydown="return RestrictionPicker.selectKey(this, event)" />
+        </div>
+      Tapping it opens the full-screen list. Tapping a restriction sets the dropdown and closes the list.
+      The list's Update and Cancel press the row's own Update and Cancel (links with class
+      gv-update and gv-cancel), so RowUpdating / RowCancelingEdit run as normal.
 
-   - Multiple list box: tick boxes. Items already selected (attached on the server) show ticked.
-   - Single list box: radio buttons, choose one. Items with data-attached="true" show as "Already added".
-   - Save copies the choice back into the list box and clicks the hidden Save button (a normal postback).
-   - Cancel or Esc closes without changing anything.
-   - A list item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
-   - A disabled item with an empty value is shown as a group heading.
+   2. A tick list to add several at once, from a hidden <asp:ListBox SelectionMode="Multiple">:
+        RestrictionPicker.open(listBoxClientId, saveButtonClientId)
+      Save copies the ticks into the list box and clicks the hidden Save button (a normal postback).
 
-   Safe alongside the rest of the app: it does nothing until open() is called, adds no page-wide
-   event listeners, defines one global (RestrictionPicker), and the overlay is removed from the
-   page when it closes. Plain ES5. */
+   In both lists:
+   - An item's data-desc attribute is shown under its name; a blank line starts a new paragraph.
+   - A disabled item with an empty value is a group heading.
+   - A disabled item with data-attached="true" is shown greyed out as "Already added".
+
+   Safe alongside the rest of the app: it does nothing until called, adds no page-wide event
+   listeners, defines one global (RestrictionPicker), and the overlay is removed when it closes. */
 window.RestrictionPicker = window.RestrictionPicker || (function () {
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -24,20 +29,20 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     return e;
   }
 
-  function open(listId, saveId) {
-    var list = document.getElementById(listId), save = document.getElementById(saveId);
-    if (!list || !save || document.querySelector('.rp-overlay')) return;   // already open
-    var opener = document.activeElement, root = document.documentElement, oldOverflow = root.style.overflow;
-    var multi = list.multiple;
+  // o: { multi, okText, prompt, closeOnPick, onOk, onCancel, onClose }
+  function show(list, o) {
+    if (document.querySelector('.rp-overlay')) return;   // already open
+    var multi = o.multi, root = document.documentElement, oldOverflow = root.style.overflow;
+    var title = list.getAttribute('data-title') || 'Select';
 
     var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
     var body = el('div', 'rp-body'), bar = el('div', 'rp-bar');
-    var cancel = el('button', 'btn btn-outline-secondary', 'Cancel'), ok = el('button', 'btn btn-primary', save.value || 'Save');
+    var cancel = el('button', 'btn btn-outline-secondary', 'Cancel'), ok = el('button', 'btn btn-primary', o.okText || 'Save');
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
-    ov.setAttribute('aria-label', list.getAttribute('data-title') || 'Select');
+    ov.setAttribute('aria-label', title);
     cancel.type = ok.type = 'button';
-    head.appendChild(el('div', 'rp-title', list.getAttribute('data-title') || 'Select'));
+    head.appendChild(el('h5', 'rp-title', title));
     head.appendChild(sub);
     bar.appendChild(cancel);
     bar.appendChild(ok);
@@ -45,25 +50,28 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     ov.appendChild(body);
     ov.appendChild(bar);
 
-    // One tick box (or radio button) per list item. Disabled items with no value are group headings.
+    // One tick box (or radio button) per list item
     var boxes = [];
     for (var i = 0; i < list.options.length; i++) {
-      var o = list.options[i];
-      if (o.disabled && !o.value) { body.appendChild(el('div', 'rp-group', o.text)); continue; }
+      var opt = list.options[i];
+      if (!opt.value) {                                  // group heading, or a "-- Select --" placeholder
+        if (opt.disabled) body.appendChild(el('div', 'rp-group', opt.text));
+        continue;
+      }
       var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
-      var already = !multi && o.getAttribute('data-attached') === 'true';
+      var already = opt.getAttribute('data-attached') === 'true';
       cb.type = multi ? 'checkbox' : 'radio';
       if (!multi) cb.name = 'rp-pick';      // groups the radios; the overlay is outside the form, so it never posts
-      cb.checked = multi && o.selected;
-      cb.disabled = o.disabled || already;
-      text.appendChild(el('div', 'rp-name', o.text));
+      cb.checked = opt.selected;
+      cb.disabled = opt.disabled || already;
+      text.appendChild(el('div', 'rp-name', opt.text));
       if (already) { item.className = 'rp-item rp-done'; text.appendChild(el('div', 'rp-tag', 'Already added')); }
-      var paras = (o.getAttribute('data-desc') || '').split(/\n\s*\n/);
+      var paras = (opt.getAttribute('data-desc') || '').split(/\n\s*\n/);
       for (var p = 0; p < paras.length; p++) if (paras[p].trim()) text.appendChild(el('p', 'rp-desc', paras[p].trim()));
       item.appendChild(cb);
       item.appendChild(text);
       body.appendChild(item);
-      boxes.push({ opt: o, cb: cb, item: item, was: o.selected });
+      boxes.push({ opt: opt, cb: cb, item: item, was: opt.selected });
     }
 
     function refresh() {
@@ -76,31 +84,38 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
         if (!on && b.was) rem++;
       }
       if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
-      else {
-        sub.textContent = chosen ? 'Selected: ' + chosen.opt.text : 'Choose one restriction to add';
-        ok.disabled = !chosen;
+      else sub.textContent = chosen ? 'Selected: ' + chosen.opt.text : (o.prompt || 'Choose one');
+      return chosen;
+    }
+    function apply() {                      // copy the choice back into the real list
+      if (multi) { for (var i = 0; i < boxes.length; i++) boxes[i].opt.selected = boxes[i].cb.checked; return; }
+      var chosen = refresh();
+      if (chosen && list.value !== chosen.opt.value) {
+        list.value = chosen.opt.value;
+        var ev = document.createEvent('HTMLEvents');   // keeps AutoPostBack and onchange working
+        ev.initEvent('change', true, false);
+        list.dispatchEvent(ev);
       }
     }
     function close() {
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       root.style.overflow = oldOverflow;
-      if (opener && opener.focus) opener.focus();
+      if (o.onClose) o.onClose();
     }
 
-    body.onchange = refresh;
-    cancel.onclick = close;
-    ok.onclick = function () {
-      for (var i = 0; i < boxes.length; i++) boxes[i].opt.selected = boxes[i].cb.checked;
-      close();
-      save.click();                         // normal postback to btnSaveRestrictions_Click
+    body.onchange = function () {
+      refresh();
+      if (!multi && o.closeOnPick) { apply(); close(); }
     };
+    cancel.onclick = function () { close(); if (o.onCancel) o.onCancel(); };
+    ok.onclick = function () { apply(); close(); if (o.onOk) o.onOk(); };
     ov.onkeydown = function (e) { if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); close(); } };
 
     document.body.appendChild(ov);
     root.style.overflow = 'hidden';         // stop the page scrolling behind the overlay
     refresh();
-    var first = null;                       // start at the first ticked item, or the first that can be chosen
-    for (var j = 0; j < boxes.length && !first; j++) if (multi && boxes[j].was) first = boxes[j];
+    var first = null;                       // start at the current choice, or the first that can be chosen
+    for (var j = 0; j < boxes.length && !first; j++) if (boxes[j].was) first = boxes[j];
     for (var k = 0; k < boxes.length && !first; k++) if (!boxes[k].cb.disabled) first = boxes[k];
     if (first) {
       body.scrollTop = first.item.offsetTop - body.offsetTop - 60;
@@ -108,5 +123,43 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     } else ok.focus();
   }
 
-  return { open: open };
+  // Tick list to add several: hidden ListBox + hidden Save button
+  function open(listId, saveId) {
+    var list = document.getElementById(listId), save = document.getElementById(saveId);
+    if (!list || !save) return;
+    var opener = document.activeElement;
+    show(list, {
+      multi: list.multiple, okText: save.value || 'Save', prompt: 'Choose one restriction to add',
+      onOk: function () { save.click(); },
+      onClose: function () { if (opener && opener.focus) opener.focus(); }
+    });
+  }
+
+  // Dropdown list in a GridView row: Update / Cancel press the row's own buttons
+  function fromSelect(select) {
+    if (!select || select.disabled) return;
+    var row = select.parentNode;
+    while (row && row.tagName !== 'TR') row = row.parentNode;
+    var update = row && row.querySelector('.gv-update'), cancel = row && row.querySelector('.gv-cancel');
+    show(select, {
+      multi: false, closeOnPick: true, prompt: 'Choose a restriction',
+      okText: update ? update.textContent : 'Done',
+      onOk: function () { if (update) update.click(); },
+      onCancel: function () { if (cancel) cancel.click(); },
+      onClose: function () { select.focus(); }
+    });
+  }
+
+  // Keyboard on the dropdown: Enter, Space, Alt+Down or F4 open the full-screen list
+  function selectKey(select, e) {
+    var k = e.key || '';
+    if (k === 'Enter' || k === ' ' || k === 'F4' || (e.altKey && k === 'ArrowDown') || e.keyCode === 13 || e.keyCode === 32) {
+      if (e.preventDefault) e.preventDefault();
+      fromSelect(select);
+      return false;
+    }
+    return true;
+  }
+
+  return { open: open, fromSelect: fromSelect, selectKey: selectKey };
 })();

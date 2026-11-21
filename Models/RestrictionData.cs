@@ -78,15 +78,29 @@ namespace DropdownTests
             lock (Sync) return Rows.Where(r => r.RouteId == routeId).ToList();
         }
 
-        public static void Attach(int routeId, int restrictionTypeId)
+        public static void Attach(int routeId, int restrictionTypeId, string notes = "")
         {
             var type = RestrictionTypes.Get(restrictionTypeId);
             lock (Sync)
                 Rows.Add(new RouteRestriction
                 {
                     Id = _nextId++, RouteId = routeId, RestrictionTypeId = restrictionTypeId,
-                    RestrictionName = type != null ? type.Name : "", Notes = ""
+                    RestrictionName = type != null ? type.Name : "", Notes = notes ?? ""
                 });
+        }
+
+        /// <summary>Changes a row's restriction and notes (editing a grid row).</summary>
+        public static void Update(int id, int restrictionTypeId, string notes)
+        {
+            var type = RestrictionTypes.Get(restrictionTypeId);
+            lock (Sync)
+            {
+                var row = Rows.FirstOrDefault(r => r.Id == id);
+                if (row == null) return;
+                row.RestrictionTypeId = restrictionTypeId;
+                row.RestrictionName = type != null ? type.Name : "";
+                row.Notes = notes ?? "";
+            }
         }
 
         public static void Detach(int id)

@@ -1,6 +1,8 @@
 # Dropdown tests: full-screen restriction picker
 
-An ASP.NET Web Forms user control for a heavy load route. It shows the restrictions attached to the route in a GridView that has one column, Notes. An **Add restriction** button opens a full-screen tick list of every restriction (the source list), with the ones already attached ticked. Save attaches the new ticks and detaches the unticked ones.
+An ASP.NET Web Forms user control for a heavy load route. It shows the restrictions attached to the route in a GridView with one column, Notes.
+
+When a row is in edit mode, its restriction is an ordinary **`asp:DropDownList` in the grid row**, filled in C# in `RowDataBound`. Tapping it opens the list full screen, so long descriptions are readable on a phone or a PC. Tapping a restriction sets the dropdown and goes back to the row. The full-screen list's **Update** and **Cancel** buttons press the row's own Update and Cancel, so `RowUpdating` and `RowCancelingEdit` run as normal.
 
 This is the version that uses a small JavaScript file. The picker works well on phones and on a PC.
 
@@ -24,11 +26,11 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 
 | File | What it is |
 | --- | --- |
-| `Controls/RoadRestrictions.ascx` | The user control: Add restriction button, hidden source list box, hidden Save button, and the Notes grid |
-| `Controls/RoadRestrictions.ascx.cs` | Code-behind: fills and pre-selects the source list, saves ticks, edits notes |
+| `Controls/RoadRestrictions.ascx` | The user control: Add restriction button, the Notes grid with a dropdown list in the edit row, and the hidden list box and Save button for the tick list |
+| `Controls/RoadRestrictions.ascx.cs` | Code-behind: fills the row's dropdown in `RowDataBound`, adds and updates rows, fills and saves the tick list |
 | `Controls/RoadRestrictions.ascx.designer.cs` | Control declarations (Visual Studio regenerates this) |
 | `Models/RestrictionData.cs` | Sample in-memory data. Replace `RestrictionTypes` and `RouteRestrictions` with your database calls |
-| `Scripts/restriction-picker.js` | The full-screen tick list, about 90 lines of plain ES5 |
+| `Scripts/restriction-picker.js` | The full-screen list for the row dropdown and the tick list, plain ES5 |
 | `Content/restriction-picker.css` | Styles for the grid and the picker |
 | `demo/index.html` | A page you can open in a browser to try it (uses the script and CSS files above) |
 | `demo/standalone.html` | The same demo with the script and CSS built in, so it runs on its own |
@@ -51,10 +53,29 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 <uc:RoadRestrictions ID="RoadRestrictions1" runat="server" RouteId="42" AllowMultiple="false" />
 ```
 
-| `AllowMultiple` | What the picker does |
+| `AllowMultiple` | What Add restriction does |
 | --- | --- |
-| `true` (default) | Tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
-| `false` | Radio buttons, so you choose one restriction. Restrictions already on the route are greyed out and marked "Already added". The button says Add and stays disabled until you choose one. |
+| `true` (default) | Opens a full-screen tick list. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
+| `false` | Adds a new row to the grid in edit mode, with an empty dropdown list ("-- Select a restriction --") and a Notes box. Choose the restriction, write the notes, then Update. Update with nothing chosen shows "Choose a restriction." and keeps the row open. |
+
+In both modes, **Edit** on a row shows its restriction as a dropdown list. Restrictions already on other rows are disabled in the dropdown and shown as "Already added" in the full-screen list.
+
+### The dropdown in the grid row
+
+```aspx
+<EditItemTemplate>
+  <div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector('select'))">
+    <asp:DropDownList ID="ddlRestriction" runat="server" CssClass="form-select"
+        data-title="Obstruction / restriction"
+        onkeydown="return RestrictionPicker.selectKey(this, event)" />
+  </div>
+  ...
+</EditItemTemplate>
+```
+
+- It is filled in `gvRestrictions_RowDataBound` with `FillRestrictions(ddl)` and `ddl.SelectedValue = ...`, like any DropDownList. `RowUpdating` reads `ddl.SelectedValue`.
+- The wrapper `div` takes taps and opens the full-screen list. With the keyboard, Enter, Space or Alt+Down on the dropdown opens it.
+- The row's Update and Cancel links have the classes `gv-update` and `gv-cancel`, which is how the full-screen list finds them.
 
 ### Descriptions and groups
 

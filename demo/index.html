@@ -31,20 +31,21 @@
 <div class="container body-content">
 <main>
   <h2>Heavy load route</h2>
-  <p class="text-muted">This page uses the real <code>restriction-picker.js</code> and <code>restriction-picker.css</code> from the repository, with Bootstrap 5 as in a new Visual Studio Web Forms project. The script at the bottom only pretends to be the server, so you can try it without running ASP.NET. The log shows what the code-behind would receive.</p>
+  <p class="text-muted">This page uses the real <code>restriction-picker.js</code> and <code>restriction-picker.css</code> from the repository, with Bootstrap 5 as in a new Visual Studio Web Forms project. The script at the bottom only pretends to be the server, so you can try it without running ASP.NET. The log shows what the code-behind would receive. Click <strong>Edit</strong> on a row to see the restriction as a dropdown list in the grid row: tapping it opens the full-screen list, with the row&#39;s Update and Cancel at the bottom.</p>
 
   <div class="alert alert-secondary py-2">
     <div class="form-check form-switch m-0">
       <input class="form-check-input" type="checkbox" role="switch" id="demoAllowMultiple" checked>
-      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (turn off to choose one restriction at a time)</label>
+      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: Add restriction opens a tick list. Off: it adds a new row with a dropdown)</label>
     </div>
   </div>
 
   <!-- What RoadRestrictions.ascx renders -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h3 class="h4 m-0">Route obstructions and restrictions</h3>
-    <button type="button" class="btn btn-primary"
+    <button type="button" class="btn btn-primary" id="RoadRestrictions1_btnPickMany"
       onclick="RestrictionPicker.open('RoadRestrictions1_lstRestrictions', 'RoadRestrictions1_btnSaveRestrictions')">Add restriction</button>
+    <input type="submit" class="btn btn-primary" id="RoadRestrictions1_btnAddRow" name="RoadRestrictions1$btnAddRow" value="Add restriction" hidden>
   </div>
   <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
     data-title="Restrictions on this route" style="display:none"></select>
@@ -83,7 +84,7 @@ groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types
 function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
 function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
 
-var nextId = 1, editIndex = -1;
+var nextId = 1, editIndex = -1, adding = false;
 var rows = [
   { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
   { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
@@ -96,71 +97,94 @@ var lst = document.getElementById("RoadRestrictions1_lstRestrictions");
 var logEl = document.getElementById("log");
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 function log(s) { logEl.textContent += s + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+function multi() { return document.getElementById("demoAllowMultiple").checked; }
+
+// FillRestrictions: heading items (disabled, empty value) and data-desc on each restriction
+function fillOptions(opts) {   // opts: { selected: [ids], taken: [ids], placeholder: bool }
+  var o = opts.placeholder ? '<option value="">-- Select a restriction --</option>' : '', g = null;
+  types.forEach(function (t) {
+    var taken = opts.taken && opts.taken.indexOf(t.id) >= 0;
+    if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
+    o += '<option value="' + t.id + '"' + (opts.selected.indexOf(t.id) >= 0 ? ' selected' : '') +
+      (taken ? ' disabled data-attached="true"' : '') + (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
+  });
+  return o;
+}
 
 function render() {
-  // GridView: one Notes column
+  // GridView (plus the new, unsaved row while adding)
+  var list = rows.slice();
+  if (adding) { list.push({ Id: 0, TypeId: 0, Notes: "" }); editIndex = list.length - 1; }
   var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
-  if (!rows.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
-  rows.forEach(function (r, i) {
-    if (i === editIndex)
-      h += '<tr class="editing"><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><textarea id="txtNotes" rows="4" class="form-control mt-1">' + esc(r.Notes) + '</textarea></td>' +
-        '<td><a href="#" onclick="return post(\'Update$' + i + '\')" class="me-2">Update</a><a href="#" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
-    else
+  if (!list.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
+  list.forEach(function (r, i) {
+    if (i === editIndex) {
+      // RowDataBound: the old-style dropdown list for this row
+      var taken = rows.filter(function (x) { return x.Id !== r.Id; }).map(function (x) { return x.TypeId; });
+      h += '<tr class="editing"><td class="notes">' +
+        '<div class="rp-select" onclick="RestrictionPicker.fromSelect(this.querySelector(\'select\'))">' +
+        '<select id="ddlRestriction" name="' + GV + '$ctl0' + (i + 2) + '$ddlRestriction" class="form-select" data-title="Obstruction / restriction" ' +
+        'onkeydown="return RestrictionPicker.selectKey(this, event)">' +
+        fillOptions({ selected: [r.TypeId], taken: taken, placeholder: r.Id === 0 }) + '</select></div>' +
+        '<span id="lblRowError" class="text-danger small"></span>' +
+        '<textarea id="txtNotes" rows="4" class="form-control mt-2">' + esc(r.Notes) + '</textarea></td>' +
+        '<td><a href="#" class="gv-update me-2" onclick="return post(\'Update$' + i + '\')">Update</a>' +
+        '<a href="#" class="gv-cancel" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
+    } else {
       h += '<tr><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><div class="ntext">' + esc(r.Notes) + '</div></td>' +
         '<td><a href="#" onclick="return post(\'Edit$' + i + '\')">Edit</a></td></tr>';
+    }
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
-  // OnInit: AllowMultiple sets the list box's selection mode and the button text
-  var multi = document.getElementById("demoAllowMultiple").checked;
-  lst.multiple = multi;
-  document.getElementById("RoadRestrictions1_btnSaveRestrictions").value = multi ? "Save" : "Add";
-
-  // OnPreRender: source list with group headings. Multiple: attached ones pre-selected.
-  // Single: attached ones marked data-attached ("Already added").
-  var attached = rows.map(function (r) { return r.TypeId; }), o = '', g = null;
-  types.forEach(function (t) {
-    var on = attached.indexOf(t.id) >= 0;
-    if (t.group !== g) { o += '<option value="" disabled>' + esc(t.group) + '</option>'; g = t.group; }
-    o += '<option value="' + t.id + '"' + (on && multi ? ' selected' : '') + (on && !multi ? ' data-attached="true"' : '') +
-      (t.desc ? ' data-desc="' + esc(t.desc) + '"' : '') + '>' + esc(t.name) + '</option>';
-  });
-  lst.innerHTML = o;
-  if (!multi) lst.selectedIndex = -1;
+  // OnPreRender: AllowMultiple picks which Add button shows; the tick list is filled with attached ones ticked
+  document.getElementById("RoadRestrictions1_btnPickMany").hidden = !multi();
+  document.getElementById("RoadRestrictions1_btnAddRow").hidden = multi();
+  lst.innerHTML = fillOptions({ selected: rows.map(function (r) { return r.TypeId; }) });
 }
 
 function post(arg) {
   var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
   log("POST " + GV + "  " + arg);
-  if (cmd === "Edit") editIndex = i;
-  if (cmd === "Update") { rows[i].Notes = document.getElementById("txtNotes").value; log("  RowUpdating: notes saved for " + typeName(rows[i].TypeId)); editIndex = -1; }
-  if (cmd === "Cancel") editIndex = -1;
+  if (cmd === "Edit") { adding = false; editIndex = i; log("  RowEditing"); }
+  if (cmd === "Cancel") { adding = false; editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Update") {
+    var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
+    log("  RowUpdating  ddlRestriction.SelectedValue = \"" + ddl.value + "\"");
+    if (!typeId) { document.getElementById("lblRowError").textContent = "Choose a restriction."; log("  Nothing chosen: row stays in edit mode"); return false; }
+    if (adding && i === rows.length) { rows.push({ Id: nextId++, TypeId: typeId, Notes: notes }); adding = false; log("  Attach " + typeName(typeId)); }
+    else { rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId)); }
+    editIndex = -1;
+  }
   render();
   return false;
 }
 
-// Real app: the hidden asp:Button submits the form. Here it calls the fake server instead.
+// AllowMultiple="false": Add restriction adds a new row in edit mode
+document.getElementById("RoadRestrictions1_btnAddRow").onclick = function (e) {
+  e.preventDefault();
+  log("POST btnAddRow_Click: new row in edit mode");
+  adding = true;
+  render();
+  var box = document.querySelector(".grid-box"); box.scrollTop = box.scrollHeight;
+};
+
+// AllowMultiple="true": the tick list's hidden Save button
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
   var ticked = Array.prototype.filter.call(lst.options, function (o) { return o.selected && o.value; }).map(function (o) { return +o.value; });
-  var attached = rows.map(function (r) { return r.TypeId; });
-  if (!lst.multiple) {
-    log("POST btnSaveRestrictions_Click  SelectedValue = \"" + (ticked[0] || "") + "\"");
-    if (ticked.length && attached.indexOf(ticked[0]) < 0) { rows.push({ Id: nextId++, TypeId: ticked[0], Notes: "" }); log("  Attach " + typeName(ticked[0])); }
-    editIndex = -1;
-    render();
-    return;
-  }
   log("POST btnSaveRestrictions_Click  ticked = [" + ticked.join(", ") + "]");
+  var attached = rows.map(function (r) { return r.TypeId; });
   rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
-  editIndex = -1;
+  adding = false; editIndex = -1;
   render();
 };
 
 document.getElementById("demoAllowMultiple").onchange = function () {
   log("GET page reloaded with AllowMultiple=\"" + this.checked + "\"");
+  adding = false; editIndex = -1;
   render();
 };
 
