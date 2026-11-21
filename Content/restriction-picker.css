@@ -47,3 +47,10 @@
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
 .rp-overlay .btn:disabled { pointer-events: none; }
+
+/* Remove confirmation: a small popover box in the middle of the screen */
+.rp-confirm { width: min(24rem, calc(100% - 2rem)); margin: auto; padding: 1.25rem; border: 0; border-radius: .5rem;
+  background-color: #fff; color: #212529; box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .25); white-space: normal; text-align: left; }
+.rp-confirm::backdrop { background-color: rgba(0, 0, 0, .4); }
+.rp-confirm p { margin: 0 0 1rem; }
+.rp-confirm .rp-confirm-bar { display: flex; gap: .5rem; justify-content: flex-end; }

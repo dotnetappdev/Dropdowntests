@@ -65,6 +65,13 @@
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
 .rp-overlay .btn:disabled { pointer-events: none; }
+
+/* Remove confirmation: a small popover box in the middle of the screen */
+.rp-confirm { width: min(24rem, calc(100% - 2rem)); margin: auto; padding: 1.25rem; border: 0; border-radius: .5rem;
+  background-color: #fff; color: #212529; box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .25); white-space: normal; text-align: left; }
+.rp-confirm::backdrop { background-color: rgba(0, 0, 0, .4); }
+.rp-confirm p { margin: 0 0 1rem; }
+.rp-confirm .rp-confirm-bar { display: flex; gap: .5rem; justify-content: flex-end; }
 </style>
 <!-- Scripts/restriction-picker.js, included so this page runs on its own -->
 <script>
@@ -416,7 +423,12 @@ function render() {
         '<a href="#" class="gv-cancel" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
     } else {
       h += '<tr><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><div class="ntext">' + esc(r.Notes) + '</div></td>' +
-        '<td><a href="#" onclick="return post(\'Edit$' + i + '\')">Edit</a></td></tr>';
+        '<td><a href="#" class="me-2" onclick="return post(\'Edit$' + i + '\')">Edit</a>' +
+        '<button type="button" class="btn btn-link text-danger p-0 align-baseline" popovertarget="rm' + i + '">Remove</button>' +
+        '<div id="rm' + i + '" popover class="rp-confirm" role="dialog" aria-label="Remove restriction">' +
+        '<p>Remove <strong>' + esc(typeName(r.TypeId)) + '</strong> from this route? Its notes will be deleted too.</p>' +
+        '<div class="rp-confirm-bar"><button type="button" class="btn btn-outline-secondary" popovertarget="rm' + i + '" popovertargetaction="hide">Cancel</button>' +
+        '<a href="#" class="btn btn-danger" onclick="return post(\'Delete$' + i + '\')">Remove</a></div></div></td></tr>';
     }
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
@@ -434,6 +446,7 @@ function post(arg) {
   log("POST " + GV + "  " + arg);
   if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
   if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Delete") { log("  RowDeleting  Detach " + rows[i].Id + "  " + typeName(rows[i].TypeId)); rows.splice(i, 1); editIndex = -1; }
   if (cmd === "Update") {
     var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
     log("  RowUpdating  ddlRestriction.SelectedValue = \"" + ddl.value + "\"");

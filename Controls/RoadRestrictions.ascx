@@ -22,6 +22,7 @@
     OnRowEditing="gvRestrictions_RowEditing"
     OnRowUpdating="gvRestrictions_RowUpdating"
     OnRowCancelingEdit="gvRestrictions_RowCancelingEdit"
+    OnRowDeleting="gvRestrictions_RowDeleting"
     EmptyDataText="No restrictions attached yet. Click Add restriction.">
   <Columns>
     <asp:TemplateField HeaderText="Notes" ItemStyle-CssClass="notes">
@@ -51,7 +52,18 @@
 
     <asp:TemplateField>
       <ItemTemplate>
-        <asp:LinkButton runat="server" CommandName="Edit" Text="Edit" />
+        <asp:LinkButton runat="server" CommandName="Edit" Text="Edit" CssClass="me-2" />
+        <%-- Remove (unattach) asks first in a small popover; its Remove is the grid's Delete command --%>
+        <button type="button" class="btn btn-link text-danger p-0 align-baseline"
+            popovertarget="<%# Container.ClientID %>_remove">Remove</button>
+        <div id="<%# Container.ClientID %>_remove" popover class="rp-confirm" role="dialog" aria-label="Remove restriction">
+          <p>Remove <strong><%#: Eval("RestrictionName") %></strong> from this route? Its notes will be deleted too.</p>
+          <div class="rp-confirm-bar">
+            <button type="button" class="btn btn-outline-secondary"
+                popovertarget="<%# Container.ClientID %>_remove" popovertargetaction="hide">Cancel</button>
+            <asp:LinkButton runat="server" CommandName="Delete" Text="Remove" CssClass="btn btn-danger" CausesValidation="false" />
+          </div>
+        </div>
       </ItemTemplate>
       <EditItemTemplate>
         <%-- gv-update and gv-cancel let the full-screen list press these --%>

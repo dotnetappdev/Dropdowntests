@@ -132,7 +132,12 @@ function render() {
         '<a href="#" class="gv-cancel" onclick="return post(\'Cancel$' + i + '\')">Cancel</a></td></tr>';
     } else {
       h += '<tr><td class="notes"><div class="rname">' + esc(typeName(r.TypeId)) + '</div><div class="ntext">' + esc(r.Notes) + '</div></td>' +
-        '<td><a href="#" onclick="return post(\'Edit$' + i + '\')">Edit</a></td></tr>';
+        '<td><a href="#" class="me-2" onclick="return post(\'Edit$' + i + '\')">Edit</a>' +
+        '<button type="button" class="btn btn-link text-danger p-0 align-baseline" popovertarget="rm' + i + '">Remove</button>' +
+        '<div id="rm' + i + '" popover class="rp-confirm" role="dialog" aria-label="Remove restriction">' +
+        '<p>Remove <strong>' + esc(typeName(r.TypeId)) + '</strong> from this route? Its notes will be deleted too.</p>' +
+        '<div class="rp-confirm-bar"><button type="button" class="btn btn-outline-secondary" popovertarget="rm' + i + '" popovertargetaction="hide">Cancel</button>' +
+        '<a href="#" class="btn btn-danger" onclick="return post(\'Delete$' + i + '\')">Remove</a></div></div></td></tr>';
     }
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
@@ -150,6 +155,7 @@ function post(arg) {
   log("POST " + GV + "  " + arg);
   if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
   if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Delete") { log("  RowDeleting  Detach " + rows[i].Id + "  " + typeName(rows[i].TypeId)); rows.splice(i, 1); editIndex = -1; }
   if (cmd === "Update") {
     var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
     log("  RowUpdating  ddlRestriction.SelectedValue = \"" + ddl.value + "\"");

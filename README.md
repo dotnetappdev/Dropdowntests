@@ -83,6 +83,10 @@ In both modes, **Edit** on a row shows its restriction as a dropdown list. Restr
 - The full-screen list sets its own position and a very high `z-index`, so it fills the screen above menus and headers even if `restriction-picker.css` isn't loaded. Load the CSS anyway for the styling.
 - The row's Update and Cancel links have the classes `gv-update` and `gv-cancel`, which is how the full-screen list finds them.
 
+### Removing a restriction
+
+Each row has **Remove** next to **Edit**. It asks first, in a small box: "Remove Low bridge from this route? Its notes will be deleted too.", with Cancel and Remove. That Remove is the GridView's `CommandName="Delete"`, so `gvRestrictions_RowDeleting` runs and calls `RouteRestrictions.Detach(id)`. The box is a popover (no JavaScript), styled by `.rp-confirm`.
+
 ### Descriptions and groups
 
 - Each restriction can have a long `Description`. It is written to the list item's `data-desc` attribute and shown under the name in the picker. A blank line starts a new paragraph.
