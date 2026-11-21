@@ -1,9 +1,9 @@
 <%@ Control Language="C#" AutoEventWireup="true" CodeBehind="RoadRestrictions.ascx.cs"
     Inherits="DropdownTests.Controls.RoadRestrictions" %>
 
-<div class="uc-toolbar">
-  <h3>Route obstructions and restrictions</h3>
-  <button type="button" class="btn-primary"
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h3 class="h4 m-0">Route obstructions and restrictions</h3>
+  <button type="button" class="btn btn-primary"
       onclick="RestrictionPicker.open('<%= lstRestrictions.ClientID %>', '<%= btnSaveRestrictions.ClientID %>')">
     Add restriction</button>
 </div>
@@ -16,9 +16,9 @@
 <asp:Button ID="btnSaveRestrictions" runat="server" CausesValidation="false"
     OnClick="btnSaveRestrictions_Click" Style="display:none" />
 
-<div class="grid-box">
+<div class="grid-box border rounded">
 <asp:GridView ID="gvRestrictions" runat="server" AutoGenerateColumns="false"
-    CssClass="gv" DataKeyNames="Id" UseAccessibleHeader="true"
+    CssClass="table table-striped gv" GridLines="None" DataKeyNames="Id" UseAccessibleHeader="true"
     OnRowDataBound="gvRestrictions_RowDataBound"
     OnRowEditing="gvRestrictions_RowEditing"
     OnRowUpdating="gvRestrictions_RowUpdating"
@@ -34,7 +34,7 @@
       </ItemTemplate>
       <EditItemTemplate>
         <div class="rname"><%#: Eval("RestrictionName") %></div>
-        <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4"
+        <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4" CssClass="form-control mt-1"
             Text='<%# Bind("Notes") %>' />
       </EditItemTemplate>
     </asp:TemplateField>
@@ -44,7 +44,7 @@
         <asp:LinkButton runat="server" CommandName="Edit" Text="Edit" />
       </ItemTemplate>
       <EditItemTemplate>
-        <asp:LinkButton runat="server" CommandName="Update" Text="Update" />
+        <asp:LinkButton runat="server" CommandName="Update" Text="Update" CssClass="me-2" />
         <asp:LinkButton runat="server" CommandName="Cancel" Text="Cancel" CausesValidation="false" />
       </EditItemTemplate>
     </asp:TemplateField>

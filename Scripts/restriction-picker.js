@@ -32,7 +32,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
 
     var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
     var body = el('div', 'rp-body'), bar = el('div', 'rp-bar');
-    var cancel = el('button', 'rp-btn', 'Cancel'), ok = el('button', 'rp-btn rp-primary', save.value || 'Save');
+    var cancel = el('button', 'btn btn-outline-secondary', 'Cancel'), ok = el('button', 'btn btn-primary', save.value || 'Save');
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
     ov.setAttribute('aria-label', list.getAttribute('data-title') || 'Select');
