@@ -35,7 +35,7 @@
   <div class="alert alert-secondary py-2">
     <div class="form-check form-switch m-0">
       <input class="form-check-input" type="checkbox" role="switch" id="demoAllowMultiple" checked>
-      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: Add restriction opens a tick list. Off: it adds a new row with a dropdown)</label>
+      <label class="form-check-label" for="demoAllowMultiple"><strong>AllowMultiple</strong> (on: tick several restrictions. Off: the same list, but only one can be ticked)</label>
     </div>
   </div>
 
@@ -75,7 +75,6 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h3 class="h4 m-0">Route obstructions and restrictions</h3>
     <button type="button" class="btn btn-primary" id="RoadRestrictions1_btnPickMany" popovertarget="RoadRestrictions1_picker">Add restriction</button>
-    <input type="submit" class="btn btn-primary" id="RoadRestrictions1_btnAddRow" name="RoadRestrictions1$btnAddRow" value="Add restriction" hidden>
   </div>
 
   <div class="grid-box border rounded"><table class="table table-striped gv" id="RoadRestrictions1_gvRestrictions"></table></div>
@@ -83,7 +82,7 @@
   <div id="RoadRestrictions1_picker" popover class="rp-overlay" role="dialog" aria-label="Restrictions on this route">
     <div class="rp-head">
       <h5 class="rp-title">Restrictions on this route</h5>
-      <div class="rp-sub">Tick the restrictions that apply, then Save.</div>
+      <div class="rp-sub" id="RoadRestrictions1_rpSub">Tick the restrictions that apply, then Save.</div>
     </div>
     <div class="rp-body" id="RoadRestrictions1_rpBody"></div>
     <div class="rp-bar">
@@ -124,7 +123,7 @@ groups.forEach(function (g) { g[1].forEach(function (n) { types.push({ id: types
 function typeName(id) { for (var i = 0; i < types.length; i++) if (types[i].id == id) return types[i].name; return ""; }
 function idOf(n) { for (var i = 0; i < types.length; i++) if (types[i].name === n) return types[i].id; return 1; }
 
-var nextId = 1, editIndex = -1, adding = false;
+var nextId = 1, editIndex = -1;
 var rows = [
   { TypeId: idOf("Low bridge"), Notes: "A38 Station Road rail bridge, 4.65 m. Load is 4.9 m high.\n\nDivert via A4019." },
   { TypeId: idOf("Weight-restricted bridge"), Notes: "B4632 Mill Brook bridge, 18 t. Bridge assessment requested." },
@@ -140,10 +139,9 @@ function multi() { return document.getElementById("demoAllowMultiple").checked; 
 function descHtml(t) { return t.desc ? t.desc.split(/\n\s*\n/).map(function (s) { return '<span class="rp-desc">' + esc(s.trim()) + '</span>'; }).join('') : ''; }
 function rowCtl(i) { return GV + "$ctl0" + (i + 2); }
 
-// What the GridView renders (plus the new, unsaved row while adding)
+// What the GridView renders
 function render() {
-  var list = rows.slice();
-  if (adding) { list.push({ Id: 0, TypeId: 0, Notes: "" }); editIndex = list.length - 1; }
+  var list = rows;
   var h = '<thead><tr><th>Notes</th><th></th></tr></thead><tbody>';
   if (!list.length) h += '<tr><td colspan="2"><em>No restrictions attached yet. Click Add restriction.</em></td></tr>';
   list.forEach(function (r, i) {
@@ -159,11 +157,11 @@ function render() {
     types.forEach(function (t) {
       var cur = r.Id !== 0 && t.id === r.TypeId, tk = taken.indexOf(t.id) >= 0;
       if (t.group !== g) { items += '<div class="rp-group">' + esc(t.group) + '</div>'; g = t.group; }
-      items += '<label class="rp-item"><input type="radio" name="' + radio + '" value="' + t.id + '"' + (cur ? ' checked data-orig' : '') + (tk ? ' disabled' : '') + '>' +
+      items += '<label class="rp-item">' + (tk ? '<input type="checkbox" checked disabled>' : '<input type="radio" name="' + radio + '" value="' + t.id + '"' + (cur ? ' checked data-orig' : '') + '>') +
         '<span class="rp-text"><span class="rp-name">' + esc(t.name) + '</span>' + (tk ? '<span class="rp-tag">Already added</span>' : '') + descHtml(t) + '</span></label>';
     });
     h += '<tr class="editing"><td class="notes">' +
-      '<button type="button" class="form-select text-start rp-dropdown" popovertarget="' + pid + '">' + (r.Id === 0 ? '-- Select a restriction --' : esc(typeName(r.TypeId))) + '</button>' +
+      '<button type="button" class="form-select text-start rp-dropdown" popovertarget="' + pid + '">' + esc(typeName(r.TypeId)) + '</button>' +
       '<span class="rp-changed small">New restriction chosen. Press Update to save it.</span>' +
       '<span id="lblRowError" class="text-danger small"></span>' +
       '<div id="' + pid + '" popover class="rp-overlay" role="dialog" aria-label="Obstruction / restriction">' +
@@ -179,16 +177,18 @@ function render() {
   });
   document.getElementById("RoadRestrictions1_gvRestrictions").innerHTML = h + '</tbody>';
 
-  // OnPreRender: AllowMultiple picks the Add button; the tick list (rptRestrictions) has attached ones ticked
-  document.getElementById("RoadRestrictions1_btnPickMany").hidden = !multi();
-  document.getElementById("RoadRestrictions1_btnAddRow").hidden = multi();
+  // OnPreRender: the Add list (rptRestrictions). Several: tick boxes, attached ones ticked.
+  // One: radios styled as tick boxes; attached ones ticked, greyed out and "Already added".
+  document.getElementById("RoadRestrictions1_rpSub").textContent = multi() ? "Tick the restrictions that apply, then Save." : "Tick one restriction to add, then Save.";
   var attached = rows.map(function (r) { return r.TypeId; }), o = '', g2 = null;
   types.forEach(function (t, i) {
     var p = "RoadRestrictions1$rptRestrictions$ctl" + (i < 10 ? "0" : "") + i + "$";
     if (t.group !== g2) { o += '<div class="rp-group">' + esc(t.group) + '</div>'; g2 = t.group; }
-    o += '<label class="rp-item"><input type="checkbox" name="' + p + 'chk"' + (attached.indexOf(t.id) >= 0 ? ' checked' : '') + '>' +
-      '<input type="hidden" name="' + p + 'hfId" value="' + t.id + '">' +
-      '<span class="rp-text"><span class="rp-name">' + esc(t.name) + '</span>' + descHtml(t) + '</span></label>';
+    var on = attached.indexOf(t.id) >= 0;
+    var box = multi() ? '<input type="checkbox" name="' + p + 'chk"' + (on ? ' checked' : '') + '>'
+      : on ? '<input type="checkbox" checked disabled>' : '<input type="radio" name="RoadRestrictions1$pick" value="' + t.id + '">';
+    o += '<label class="rp-item">' + box + '<input type="hidden" name="' + p + 'hfId" value="' + t.id + '">' +
+      '<span class="rp-text"><span class="rp-name">' + esc(t.name) + '</span>' + (!multi() && on ? '<span class="rp-tag">Already added</span>' : '') + descHtml(t) + '</span></label>';
   });
   document.getElementById("RoadRestrictions1_rpBody").innerHTML = o;
   var picker = document.getElementById("RoadRestrictions1_picker");
@@ -198,8 +198,8 @@ function render() {
 function post(arg) {
   var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
   log("POST " + GV + "  " + arg);
-  if (cmd === "Edit") { adding = false; editIndex = i; log("  RowEditing"); }
-  if (cmd === "Cancel") { adding = false; editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
+  if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
   if (cmd === "Update") {
     var picked = document.querySelector('input[name="' + rowCtl(i) + '$pick"]:checked');
     var typeId = picked ? +picked.value : 0, notes = document.getElementById("txtNotes").value;
@@ -210,8 +210,7 @@ function post(arg) {
       log("  Nothing chosen: row stays in edit mode");
       return false;
     }
-    if (adding && i === rows.length) { rows.push({ Id: nextId++, TypeId: typeId, Notes: notes }); adding = false; log("  Attach " + typeName(typeId)); }
-    else { rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId)); }
+    rows[i].TypeId = typeId; rows[i].Notes = notes; log("  Update " + typeName(typeId));
     editIndex = -1;
   }
   render();
@@ -219,15 +218,16 @@ function post(arg) {
 }
 
 // Real app: these asp:Buttons submit the form. Here they call the fake server instead.
-document.getElementById("RoadRestrictions1_btnAddRow").onclick = function (e) {
-  e.preventDefault();
-  log("POST btnAddRow_Click: new row in edit mode");
-  adding = true;
-  render();
-  var box = document.querySelector(".grid-box"); box.scrollTop = box.scrollHeight;
-};
 document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = function (e) {
   e.preventDefault();
+  if (!multi()) {
+    var picked = document.querySelector('input[name="RoadRestrictions1$pick"]:checked'), id = picked ? +picked.value : 0;
+    log('POST btnSaveRestrictions_Click  Request.Form["RoadRestrictions1$pick"] = "' + (id || "") + '"');
+    if (id && !rows.some(function (r) { return r.TypeId === id; })) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); }
+    editIndex = -1;
+    render();
+    return;
+  }
   var ticked = [];
   document.querySelectorAll("#RoadRestrictions1_rpBody .rp-item").forEach(function (item) {
     if (item.querySelector("input[type=checkbox]").checked) ticked.push(+item.querySelector("input[type=hidden]").value);
@@ -237,12 +237,12 @@ document.getElementById("RoadRestrictions1_btnSaveRestrictions").onclick = funct
   rows.filter(function (r) { return ticked.indexOf(r.TypeId) < 0; }).forEach(function (r) { log("  Detach " + typeName(r.TypeId)); });
   rows = rows.filter(function (r) { return ticked.indexOf(r.TypeId) >= 0; });
   ticked.filter(function (id) { return attached.indexOf(id) < 0; }).forEach(function (id) { rows.push({ Id: nextId++, TypeId: id, Notes: "" }); log("  Attach " + typeName(id)); });
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 document.getElementById("demoAllowMultiple").onchange = function () {
   log('GET page reloaded with AllowMultiple="' + this.checked + '"');
-  adding = false; editIndex = -1;
+  editIndex = -1;
   render();
 };
 

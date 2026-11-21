@@ -8,9 +8,6 @@ namespace DropdownTests.Controls
 {
     public partial class RoadRestrictions
     {
-        protected global::System.Web.UI.WebControls.PlaceHolder phPickManyButton;
-        protected global::System.Web.UI.WebControls.Button btnAddRow;
-        protected global::System.Web.UI.WebControls.PlaceHolder phPickMany;
         protected global::System.Web.UI.WebControls.Repeater rptRestrictions;
         protected global::System.Web.UI.WebControls.Button btnSaveRestrictions;
         protected global::System.Web.UI.WebControls.GridView gvRestrictions;

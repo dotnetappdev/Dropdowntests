@@ -14,19 +14,16 @@ namespace DropdownTests.Controls
         public int RouteId { get; set; }
 
         /// <summary>
-        /// true (default): Add restriction opens a full-screen tick list to add or remove several at once.
-        /// false: Add restriction adds a new row to the grid with a dropdown to choose one restriction.
-        /// Either way, editing a row shows the restriction as a dropdown that opens full screen.
+        /// Add restriction opens the same full-screen list either way.
+        /// true (default): tick several; Save attaches the ticked ones and detaches the unticked ones.
+        /// false: only one can be ticked; Save adds it. Ones already on the route show ticked and greyed out.
+        /// Editing a row always shows its restriction as a dropdown that opens full screen.
         /// Set it in markup, e.g. AllowMultiple="false".
         /// </summary>
         public bool AllowMultiple { get; set; } = true;
 
-        /// <summary>True while the grid shows a new, unsaved row (Add restriction with AllowMultiple="false").</summary>
-        private bool Adding
-        {
-            get { return (bool?)ViewState["Adding"] ?? false; }
-            set { ViewState["Adding"] = value; }
-        }
+        /// <summary>Posted name of the Add list's radio group when AllowMultiple is false.</summary>
+        protected string PickName { get { return UniqueID + "$pick"; } }
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -35,25 +32,12 @@ namespace DropdownTests.Controls
 
         private void BindGrid()
         {
-            var rows = RouteRestrictions.GetForRoute(RouteId).ToList();   // the attached ones
-            if (Adding)
-            {
-                rows.Add(new RouteRestriction { Id = 0, RouteId = RouteId, Notes = "" });   // the new, unsaved row
-                gvRestrictions.EditIndex = rows.Count - 1;
-            }
-            gvRestrictions.DataSource = rows;
+            gvRestrictions.DataSource = RouteRestrictions.GetForRoute(RouteId);   // the attached ones
             gvRestrictions.DataBind();
         }
 
         /// <summary>Posted name of a grid row's radio group.</summary>
         private static string RadioName(GridViewRow row) { return row.UniqueID + "$pick"; }
-
-        // AllowMultiple="false": add a new row in edit mode
-        protected void btnAddRow_Click(object sender, EventArgs e)
-        {
-            Adding = true;
-            BindGrid();
-        }
 
         protected void gvRestrictions_RowDataBound(object sender, GridViewRowEventArgs e)
         {
@@ -83,7 +67,6 @@ namespace DropdownTests.Controls
 
         protected void gvRestrictions_RowEditing(object sender, GridViewEditEventArgs e)
         {
-            Adding = false;                     // editing another row drops an unsaved new row
             gvRestrictions.EditIndex = e.NewEditIndex;
             BindGrid();
         }
@@ -102,15 +85,7 @@ namespace DropdownTests.Controls
                 return;
             }
 
-            if (id == 0)
-            {
-                RouteRestrictions.Attach(RouteId, typeId, txtNotes.Text);
-                Adding = false;
-            }
-            else
-            {
-                RouteRestrictions.Update(id, typeId, txtNotes.Text);
-            }
+            RouteRestrictions.Update(id, typeId, txtNotes.Text);
 
             gvRestrictions.EditIndex = -1;
             BindGrid();
@@ -118,14 +93,25 @@ namespace DropdownTests.Controls
 
         protected void gvRestrictions_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
-            Adding = false;
             gvRestrictions.EditIndex = -1;
             BindGrid();
         }
 
-        // AllowMultiple="true": the tick list's Save. Attach what is ticked, detach what was unticked.
+        // The full-screen list's Save.
+        // Several: attach what is ticked, detach what was unticked. One: attach the ticked restriction.
         protected void btnSaveRestrictions_Click(object sender, EventArgs e)
         {
+            if (!AllowMultiple)
+            {
+                int typeId;
+                if (int.TryParse(Request.Form[PickName], out typeId) &&
+                    !RouteRestrictions.GetForRoute(RouteId).Any(a => a.RestrictionTypeId == typeId))
+                    RouteRestrictions.Attach(RouteId, typeId);
+                gvRestrictions.EditIndex = -1;
+                BindGrid();
+                return;
+            }
+
             var ticked = rptRestrictions.Items.Cast<RepeaterItem>()
                 .Where(i => ((CheckBox)i.FindControl("chk")).Checked)
                 .Select(i => int.Parse(((HiddenField)i.FindControl("hfId")).Value))
@@ -137,7 +123,6 @@ namespace DropdownTests.Controls
             foreach (var a in attached.Where(a => !ticked.Contains(a.RestrictionTypeId)))
                 RouteRestrictions.Detach(a.Id);
 
-            Adding = false;
             gvRestrictions.EditIndex = -1;
             BindGrid();
         }
@@ -146,12 +131,8 @@ namespace DropdownTests.Controls
         {
             base.OnPreRender(e);
 
-            phPickManyButton.Visible = phPickMany.Visible = AllowMultiple;
-            btnAddRow.Visible = !AllowMultiple;
-            if (!AllowMultiple) return;
-
-            // Rebuild the tick list on every request, ticking what is attached to this route.
-            // The page comes back with the list closed.
+            // Rebuild the Add list on every request. Several: ticks what is attached. One: shows what is
+            // attached ticked and greyed out. The page comes back with the list closed.
             var attached = new HashSet<int>(RouteRestrictions.GetForRoute(RouteId).Select(a => a.RestrictionTypeId));
             rptRestrictions.DataSource = ListItems((item, t) => item.IsAttached = attached.Contains(t.Id));
             rptRestrictions.DataBind();
@@ -165,7 +146,7 @@ namespace DropdownTests.Controls
             public string GroupName { get; set; }
             public string Description { get; set; }
             public bool IsFirstInGroup { get; set; }   // show the group heading before this item
-            public bool IsAttached { get; set; }       // tick list: ticked
+            public bool IsAttached { get; set; }       // Add list: already on the route
             public bool IsCurrent { get; set; }        // row list: the row's saved restriction
             public bool IsTaken { get; set; }          // row list: already on another row
             public string RadioName { get; set; }      // row list: the row's radio group

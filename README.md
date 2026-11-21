@@ -79,8 +79,8 @@ Open `demo/index.html` in a browser. It uses the real CSS from this repository. 
 
 | `AllowMultiple` | What Add restriction does |
 | --- | --- |
-| `true` (default) | Opens a full-screen tick list. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. |
-| `false` | Adds a new row to the grid in edit mode, with an empty dropdown ("-- Select a restriction --") and a Notes box. Choose the restriction, write the notes, then Update. Update with nothing chosen shows "Choose a restriction." and keeps the row open. |
+| `true` (default) | Opens the full-screen list with tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. |
+| `false` | Opens the same list, looking the same, but only one restriction can be ticked: ticking another moves the tick. Restrictions already on the route show ticked, greyed out and "Already added". Save adds the ticked one. Underneath these are radio buttons styled as tick boxes; the code-behind reads the choice from `Request.Form[PickName]`. |
 
 In both modes, **Edit** on a row shows its restriction as a dropdown. Restrictions already on other rows are greyed out and marked "Already added".
 

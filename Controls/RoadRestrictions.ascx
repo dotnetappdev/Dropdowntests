@@ -39,21 +39,14 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h3 class="h4 m-0">Route obstructions and restrictions</h3>
-  <%-- AllowMultiple="true": opens the full-screen tick list to add several at once --%>
-  <asp:PlaceHolder ID="phPickManyButton" runat="server">
-    <button type="button" class="btn btn-primary" popovertarget="<%= ClientID %>_picker">Add restriction</button>
-  </asp:PlaceHolder>
-  <%-- AllowMultiple="false": adds a new row to the grid with a dropdown to choose the restriction --%>
-  <asp:Button ID="btnAddRow" runat="server" Text="Add restriction" CssClass="btn btn-primary"
-      CausesValidation="false" OnClick="btnAddRow_Click" />
+  <%-- Opens the full-screen list: tick several (AllowMultiple="true") or one (AllowMultiple="false") --%>
+  <button type="button" class="btn btn-primary" popovertarget="<%= ClientID %>_picker">Add restriction</button>
 </div>
 
-<%-- AllowMultiple="true" only: the full-screen tick list --%>
-<asp:PlaceHolder ID="phPickMany" runat="server">
 <div id="<%= ClientID %>_picker" popover class="rp-overlay" role="dialog" aria-label="Restrictions on this route">
   <div class="rp-head">
     <h5 class="rp-title">Restrictions on this route</h5>
-    <div class="rp-sub">Tick the restrictions that apply, then Save.</div>
+    <div class="rp-sub"><%= AllowMultiple ? "Tick the restrictions that apply, then Save." : "Tick one restriction to add, then Save." %></div>
   </div>
   <div class="rp-body">
     <asp:Repeater ID="rptRestrictions" runat="server">
@@ -62,10 +55,21 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
           <div class="rp-group"><%#: Eval("GroupName") %></div>
         </asp:PlaceHolder>
         <label class="rp-item">
-          <asp:CheckBox ID="chk" runat="server" Checked='<%# Eval("IsAttached") %>' />
+          <%-- Several: a tick box, ticked when attached --%>
+          <asp:CheckBox ID="chk" runat="server" Checked='<%# Eval("IsAttached") %>' Visible='<%# AllowMultiple %>' />
+          <%-- One: radios styled as tick boxes, so only one can be ticked. Ones already on the route
+               show ticked and greyed out (a disabled tick box, which never posts). --%>
+          <asp:PlaceHolder runat="server" Visible='<%# !AllowMultiple %>'>
+            <%# (bool)Eval("IsAttached")
+                  ? "<input type=\"checkbox\" checked disabled />"
+                  : "<input type=\"radio\" name=\"" + PickName + "\" value=\"" + Eval("Id") + "\" />" %>
+          </asp:PlaceHolder>
           <asp:HiddenField ID="hfId" runat="server" Value='<%# Eval("Id") %>' />
           <span class="rp-text">
             <span class="rp-name"><%#: Eval("Name") %></span>
+            <asp:PlaceHolder runat="server" Visible='<%# !AllowMultiple && (bool)Eval("IsAttached") %>'>
+              <span class="rp-tag">Already added</span>
+            </asp:PlaceHolder>
             <%# Paragraphs((string)Eval("Description")) %>
           </span>
         </label>
@@ -78,7 +82,6 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
         CausesValidation="false" OnClick="btnSaveRestrictions_Click" />
   </div>
 </div>
-</asp:PlaceHolder>
 
 <div class="grid-box border rounded">
 <asp:GridView ID="gvRestrictions" runat="server" AutoGenerateColumns="false"
@@ -97,7 +100,7 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
       <EditItemTemplate>
         <%-- Looks like a dropdown list. It opens this row's full-screen list (a popover, no JavaScript). --%>
         <button type="button" class="form-select text-start rp-dropdown" popovertarget="<%# Container.ClientID %>_pick">
-          <%#: (int)Eval("Id") == 0 ? "-- Select a restriction --" : Eval("RestrictionName") %>
+          <%#: Eval("RestrictionName") %>
         </button>
         <span class="rp-changed small">New restriction chosen. Press Update to save it.</span>
         <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small" EnableViewState="false" />
@@ -122,8 +125,10 @@ html:has(.rp-overlay:popover-open) { overflow: hidden; }   .rp-overlay .rp-item:
                 <label class="rp-item">
                   <%-- Plain HTML radios so they share one name (asp:RadioButton in a Repeater can't).
                        data-orig marks the saved choice, so the page can show when it has changed. --%>
-                  <input type="radio" name="<%# Eval("RadioName") %>" value="<%# Eval("Id") %>"
-                      <%# (bool)Eval("IsCurrent") ? "checked data-orig" : "" %> <%# (bool)Eval("IsTaken") ? "disabled" : "" %> />
+                  <%-- Ones on other rows show ticked and greyed out (a disabled tick box, which never posts) --%>
+                  <%# (bool)Eval("IsTaken")
+                        ? "<input type=\"checkbox\" checked disabled />"
+                        : "<input type=\"radio\" name=\"" + Eval("RadioName") + "\" value=\"" + Eval("Id") + "\"" + ((bool)Eval("IsCurrent") ? " checked data-orig" : "") + " />" %>
                   <span class="rp-text">
                     <span class="rp-name"><%#: Eval("Name") %></span>
                     <asp:PlaceHolder runat="server" Visible='<%# Eval("IsTaken") %>'>
