@@ -6,6 +6,30 @@ When a row is in edit mode, its restriction is an ordinary **`asp:DropDownList` 
 
 This is the version that uses a small JavaScript file. The picker works well on phones and on a PC.
 
+## Screenshots
+
+Taken in a desktop browser (1280 × 800) from `demo/standalone.html`.
+
+**The page:** restrictions on the route, each with Edit and Remove.
+
+![The page with three restrictions on the route](docs/screenshots/page.png)
+
+**Add restriction:** the full-screen list, grouped, with descriptions. Restrictions already on the route are ticked, and the header counts what will change.
+
+![The Add restriction list open full screen](docs/screenshots/add-restriction.png)
+
+**Edit:** the row shows its restriction as a dropdown list and the notes.
+
+![A row in edit mode with the restriction dropdown and notes](docs/screenshots/edit-row.png)
+
+**The row's dropdown, opened:** the same full-screen list, allowing one tick, with the row's Cancel and Update.
+
+![The row dropdown open as a full-screen list](docs/screenshots/edit-row-list.png)
+
+**Remove:** asks first.
+
+![The Remove confirmation box](docs/screenshots/remove.png)
+
 ## Look and feel
 
 It is styled to match a new Visual Studio **ASP.NET Web Application (.NET Framework) › Web Forms** project, which uses Bootstrap 5's light theme:
