@@ -57,6 +57,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     '.rp-overlay .rp-done:hover{background:transparent}',
     '.rp-overlay .rp-search{padding:.75rem 1rem;border-top:1px solid #dee2e6;background:#f8f9fa}',
     '.rp-overlay .rp-search input{display:block;width:100%;padding:.5rem .75rem;font:inherit;color:inherit;background:#fff;border:1px solid #ced4da;border-radius:.375rem}',
+    '.rp-overlay .rp-validation-error{margin-top:.375rem;color:#dc3545;font-size:.875rem}',
     '.rp-overlay .rp-item input{flex:none;width:1.125rem;height:1.125rem;margin:.2rem 0 0;-webkit-appearance:none;appearance:none;display:inline-grid;place-content:center;background-color:#fff;border:1px solid #adb5bd;border-radius:.25rem;cursor:pointer;}',
     '.rp-overlay .rp-item input:checked{background-color:#0d6efd;border-color:#0d6efd;}',
     '.rp-overlay .rp-item input:checked::after{content:\"\";width:.35rem;height:.65rem;margin-top:-.15rem;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}',
@@ -79,6 +80,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
     var body = el('div', 'rp-body'), searchBar = el('div', 'rp-search'), bar = el('div', 'rp-bar');
     var search = el('input', 'form-control'), empty = el('div', 'rp-empty', 'No matching restrictions.');
+    var status = el('div', 'rp-validation-error');
     var cancel = el('button', 'btn btn-outline-secondary', 'Cancel'), ok = el('button', 'btn btn-primary', o.okText || 'Save');
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
@@ -91,8 +93,11 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     search.type = 'search';
     search.placeholder = 'Search restrictions';
     search.setAttribute('aria-label', 'Search restrictions by name or description');
+    status.setAttribute('role', 'alert');
+    status.setAttribute('aria-live', 'polite');
     empty.style.cssText = 'display:none;padding:1rem;color:#6c757d;text-align:center;';
     searchBar.appendChild(search);
+    searchBar.appendChild(status);
     cancel.style.flex = ok.style.flex = '1';
     cancel.type = ok.type = 'button';
     head.appendChild(el('h5', 'rp-title', title));
@@ -155,20 +160,30 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     }
 
     function refresh() {
-      var n = 0, add = 0, rem = 0, chosen = null;
+      var n = 0, chosen = null;
       for (var i = 0; i < boxes.length; i++) {
         var b = boxes[i], on = b.cb.checked;
         if (!b.cb.disabled) b.item.className = on ? 'rp-item on' : 'rp-item';
         if (on && (multi || !b.cb.disabled)) { n++; chosen = b; }
-        if (on && !b.was) add++;
-        if (!on && b.was) rem++;
       }
-      if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
+      if (multi) sub.textContent = n + ' selected';
       else {
         sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
       }
-      if (o.requireChoice) ok.disabled = !n;
+      if (n) status.textContent = '';
+      if (o.onSelectionChange) o.onSelectionChange(n);
       return chosen;
+    }
+    function validationError() {
+      if (!o.requireChoice) return '';
+      var n = 0;
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i];
+        if (!b.cb.checked || b.cb.disabled) continue;
+        if (!/^\d+$/.test(String(b.opt.value || ''))) return 'Choose a valid restriction.';
+        n++;
+      }
+      return n ? '' : 'Choose at least one restriction before saving.';
     }
     function apply() {                      // copy the choice back into the real list
       if (multi) { for (var i = 0; i < boxes.length; i++) boxes[i].opt.selected = boxes[i].cb.checked; return; }
@@ -192,7 +207,17 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     };
     search.oninput = filterItems;
     cancel.onclick = function () { close(); if (o.onCancel) o.onCancel(); };
-    ok.onclick = function () { apply(); close(); if (o.onOk) o.onOk(); };
+    ok.onclick = function () {
+      var error = validationError();
+      if (error) {
+        status.textContent = error;
+        if (o.onInvalid) o.onInvalid(error);
+        return;
+      }
+      apply();
+      close();
+      if (o.onOk) o.onOk();
+    };
     ov.onkeydown = function (e) { if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); close(); } };
 
     document.body.appendChild(ov);
@@ -213,11 +238,28 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     var list = document.getElementById(listId), save = document.getElementById(saveId);
     if (!list || !save) return;
     var opener = document.activeElement;
+    var host = list.parentNode, error = host && host.querySelector('.rp-picker-error');
+    if (error) error.textContent = '';
     show(list, {
       multi: list.multiple, okText: save.value || 'Save', prompt: 'Tick one restriction to add', requireChoice: true,
       onOk: function () { save.click(); },
-      onClose: function () { if (opener && opener.focus) opener.focus(); }
+      onInvalid: function (message) { if (error) error.textContent = message; },
+      onSelectionChange: function (count) { if (error && count) error.textContent = ''; },
+      onClose: function () {
+        if (error) error.textContent = '';
+        if (opener && opener.focus) opener.focus();
+      }
     });
+  }
+
+  function filterNotes(textarea) {
+    if (!textarea) return;
+    var original = String(textarea.value || '');
+    var filtered = original.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\x9F]/g, '');
+    textarea.value = filtered;
+    var error = textarea.parentNode && textarea.parentNode.querySelector('.rp-row-error');
+    if (error)
+      error.textContent = original !== filtered ? 'Unsupported control characters were removed.' : '';
   }
 
   // Dropdown list in a GridView row: Update / Cancel press the row's own buttons
@@ -254,5 +296,5 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     return true;
   }
 
-  return { open: open, fromSelect: fromSelect, selectDown: selectDown, selectKey: selectKey };
+  return { open: open, fromSelect: fromSelect, selectDown: selectDown, selectKey: selectKey, filterNotes: filterNotes };
 })();

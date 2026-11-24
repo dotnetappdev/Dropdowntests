@@ -49,6 +49,7 @@
 .rp-overlay .rp-search { padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #f8f9fa; }
 .rp-overlay .rp-search input { display: block; width: 100%; padding: .5rem .75rem; font: inherit; color: inherit;
   background-color: #fff; border: 1px solid #ced4da; border-radius: .375rem; }
+.rp-overlay .rp-validation-error { margin-top: .375rem; color: #dc3545; font-size: .875rem; }
 .rp-overlay .btn:disabled { pointer-events: none; }
 
 /* Remove confirmation: a small popover box in the middle of the screen */

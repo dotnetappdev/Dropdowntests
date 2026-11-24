@@ -14,7 +14,7 @@ Taken in a desktop browser (1280 × 800) from `demo/standalone.html`.
 
 ![The page with three restrictions on the route](docs/screenshots/page.png)
 
-**Add restriction:** the full-screen list, grouped, with descriptions. Restrictions already on the route are ticked, and the header counts what will change.
+**Add restriction:** the full-screen list, grouped, with descriptions. Restrictions already on the route are ticked, and the header shows the selected total.
 
 ![The Add restriction list open full screen](docs/screenshots/add-restriction.png)
 
@@ -82,7 +82,7 @@ Open `demo/search.html` for a focused demo of searching restriction names and de
 
 | `AllowMultiple` | What Add restriction does |
 | --- | --- |
-| `true` (default) | Opens the full-screen list with tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows "3 selected · 1 to add, 1 to remove". |
+| `true` (default) | Opens the full-screen list with tick boxes. Restrictions already on the route are ticked. Save attaches the ticked ones and detaches the unticked ones. The header shows the number selected. |
 | `false` | Opens the same list, looking the same, but only one restriction can be ticked: ticking another moves the tick. Restrictions already on the route show ticked, greyed out and "Already added". Save adds the ticked one. |
 
 In both modes, **Edit** on a row shows its restriction as a dropdown list. Restrictions already on other rows are disabled in the dropdown and shown as "Already added" in the full-screen list.
@@ -118,7 +118,7 @@ Each row has **Remove** next to **Edit**. It asks first, in a small box: "Remove
 
 - Each restriction can have a long `Description`. It is written to the list item's `data-desc` attribute and shown under the name in the picker. A blank line starts a new paragraph.
 - The code-behind adds a disabled, empty-value item before each group. The picker shows it as a heading.
-- Save requires at least one selected restriction. Notes allow ordinary punctuation, tabs, and line breaks; unsupported control characters are removed while typing and rejected on postback.
+- Client-side JavaScript requires at least one selected restriction before Save. Notes allow ordinary punctuation, tabs, and line breaks; unsupported control characters are removed while typing and reported beside the Notes field. Server-side validation is unchanged.
 
 ## Why it won't interfere with the rest of the app
 

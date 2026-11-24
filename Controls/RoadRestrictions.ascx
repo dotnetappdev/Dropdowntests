@@ -1,12 +1,13 @@
 <%@ Control Language="C#" AutoEventWireup="true" CodeBehind="RoadRestrictions.ascx.cs"
     Inherits="DropdownTests.Controls.RoadRestrictions" %>
 
+<div class="rp-picker-host">
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h3 class="h4 m-0">Route obstructions and restrictions</h3>
   <%-- Opens the full-screen list: tick several (AllowMultiple="true") or one (AllowMultiple="false").
        No postback; its onclick is set in code-behind. --%>
   <button type="button" id="btnPickMany" runat="server" class="btn btn-primary">Add restriction</button>
-  <asp:Label ID="lblPickerError" runat="server" CssClass="text-danger small" EnableViewState="false" />
+  <span class="rp-picker-error text-danger small" aria-live="polite"></span>
 </div>
 
 <%-- The hidden source list for the full-screen list (SelectionMode is set from AllowMultiple),
@@ -45,10 +46,10 @@
               style="position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer"
               onclick="RestrictionPicker.fromSelect(this.parentNode.getElementsByTagName('select')[0])"></button>
         </span>
-        <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small" EnableViewState="false" />
+        <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small rp-row-error" EnableViewState="false" />
         <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4" CssClass="form-control mt-2"
             Text='<%# Bind("Notes") %>'
-            oninput="this.value=this.value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\x9F]/g, '')" />
+            oninput="RestrictionPicker.filterNotes(this)" />
       </EditItemTemplate>
     </asp:TemplateField>
 
@@ -75,4 +76,5 @@
     </asp:TemplateField>
   </Columns>
 </asp:GridView>
+</div>
 </div>
