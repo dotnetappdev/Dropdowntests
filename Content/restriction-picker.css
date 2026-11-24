@@ -46,6 +46,9 @@
 .rp-overlay .rp-item.on { background-color: #e7f1ff; }
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
+.rp-overlay .rp-search { padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #f8f9fa; }
+.rp-overlay .rp-search input { display: block; width: 100%; padding: .5rem .75rem; font: inherit; color: inherit;
+  background-color: #fff; border: 1px solid #ced4da; border-radius: .375rem; }
 .rp-overlay .btn:disabled { pointer-events: none; }
 
 /* Remove confirmation: a small popover box in the middle of the screen */

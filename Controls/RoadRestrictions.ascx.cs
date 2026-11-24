@@ -93,6 +93,20 @@ namespace DropdownTests.Controls
                 return;
             }
 
+            if (RestrictionTypes.Get(typeId) == null)
+            {
+                ((Label)gridRow.FindControl("lblRowError")).Text = "Choose a valid restriction.";
+                e.Cancel = true;
+                return;
+            }
+
+            if (HasUnsupportedControlCharacters(txtNotes.Text))
+            {
+                ((Label)gridRow.FindControl("lblRowError")).Text = "Remove unsupported control characters from the notes.";
+                e.Cancel = true;
+                return;
+            }
+
             RouteRestrictions.Update(id, typeId, txtNotes.Text);
 
             gvRestrictions.EditIndex = -1;
@@ -118,21 +132,43 @@ namespace DropdownTests.Controls
         // Several: attach what is ticked, detach what was unticked. One: attach the ticked restriction.
         protected void btnSaveRestrictions_Click(object sender, EventArgs e)
         {
+            lblPickerError.Text = "";
             if (!AllowMultiple)
             {
                 int typeId;
-                if (int.TryParse(lstRestrictions.SelectedValue, out typeId) &&
-                    !RouteRestrictions.GetForRoute(RouteId).Any(a => a.RestrictionTypeId == typeId))
+                if (!int.TryParse(lstRestrictions.SelectedValue, out typeId))
+                {
+                    lblPickerError.Text = "Choose a restriction before saving.";
+                    return;
+                }
+                if (RestrictionTypes.Get(typeId) == null)
+                {
+                    lblPickerError.Text = "Choose a valid restriction.";
+                    return;
+                }
+                if (!RouteRestrictions.GetForRoute(RouteId).Any(a => a.RestrictionTypeId == typeId))
                     RouteRestrictions.Attach(RouteId, typeId);
                 gvRestrictions.EditIndex = -1;
                 BindGrid();
                 return;
             }
 
-            var ticked = lstRestrictions.Items.Cast<ListItem>()
-                .Where(li => li.Selected && li.Value != "")
-                .Select(li => int.Parse(li.Value))
-                .ToList();
+            var ticked = new List<int>();
+            foreach (var item in lstRestrictions.Items.Cast<ListItem>().Where(li => li.Selected && li.Value != ""))
+            {
+                int typeId;
+                if (!int.TryParse(item.Value, out typeId) || RestrictionTypes.Get(typeId) == null)
+                {
+                    lblPickerError.Text = "Choose valid restrictions.";
+                    return;
+                }
+                ticked.Add(typeId);
+            }
+            if (ticked.Count == 0)
+            {
+                lblPickerError.Text = "Choose at least one restriction before saving.";
+                return;
+            }
             var attached = RouteRestrictions.GetForRoute(RouteId);
 
             foreach (var typeId in ticked.Except(attached.Select(a => a.RestrictionTypeId)))
@@ -142,6 +178,12 @@ namespace DropdownTests.Controls
 
             gvRestrictions.EditIndex = -1;
             BindGrid();
+        }
+
+        private static bool HasUnsupportedControlCharacters(string value)
+        {
+            return !string.IsNullOrEmpty(value) &&
+                value.Any(c => char.IsControl(c) && c != '\r' && c != '\n' && c != '\t');
         }
 
         protected override void OnPreRender(EventArgs e)

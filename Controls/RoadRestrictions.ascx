@@ -6,6 +6,7 @@
   <%-- Opens the full-screen list: tick several (AllowMultiple="true") or one (AllowMultiple="false").
        No postback; its onclick is set in code-behind. --%>
   <button type="button" id="btnPickMany" runat="server" class="btn btn-primary">Add restriction</button>
+  <asp:Label ID="lblPickerError" runat="server" CssClass="text-danger small" EnableViewState="false" />
 </div>
 
 <%-- The hidden source list for the full-screen list (SelectionMode is set from AllowMultiple),
@@ -46,7 +47,8 @@
         </span>
         <asp:Label ID="lblRowError" runat="server" CssClass="text-danger small" EnableViewState="false" />
         <asp:TextBox ID="txtNotes" runat="server" TextMode="MultiLine" Rows="4" CssClass="form-control mt-2"
-            Text='<%# Bind("Notes") %>' />
+            Text='<%# Bind("Notes") %>'
+            oninput="this.value=this.value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\x9F]/g, '')" />
       </EditItemTemplate>
     </asp:TemplateField>
 

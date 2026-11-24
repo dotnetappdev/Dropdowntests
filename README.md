@@ -46,6 +46,8 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 
 `demo/standalone.html` is the same page with the script and CSS built in, so it runs on its own. Use it to send the demo to someone or open it without the rest of the repository. Both pages have an **AllowMultiple** switch at the top to try choosing one or several.
 
+Open `demo/search.html` for a focused demo of searching restriction names and descriptions. The search box stays at the bottom of the picker and filters results as you type.
+
 ## Files
 
 | File | What it is |
@@ -58,6 +60,7 @@ Open `demo/index.html` in a browser. It loads the real script and CSS from this 
 | `Content/restriction-picker.css` | Styles for the grid and the picker |
 | `demo/index.html` | A page you can open in a browser to try it (uses the script and CSS files above) |
 | `demo/standalone.html` | The same demo with the script and CSS built in, so it runs on its own |
+| `demo/search.html` | A focused demo of case-insensitive name and description search |
 
 ## Using it in your app
 
@@ -115,6 +118,7 @@ Each row has **Remove** next to **Edit**. It asks first, in a small box: "Remove
 
 - Each restriction can have a long `Description`. It is written to the list item's `data-desc` attribute and shown under the name in the picker. A blank line starts a new paragraph.
 - The code-behind adds a disabled, empty-value item before each group. The picker shows it as a heading.
+- Save requires at least one selected restriction. Notes allow ordinary punctuation, tabs, and line breaks; unsupported control characters are removed while typing and rejected on postback.
 
 ## Why it won't interfere with the rest of the app
 

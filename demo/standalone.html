@@ -64,6 +64,9 @@
 .rp-overlay .rp-item.on { background-color: #e7f1ff; }
 .rp-overlay .rp-done { cursor: default; opacity: .65; }
 .rp-overlay .rp-done:hover { background-color: transparent; }
+.rp-overlay .rp-search { padding: .75rem 1rem; border-top: 1px solid #dee2e6; background-color: #f8f9fa; }
+.rp-overlay .rp-search input { display: block; width: 100%; padding: .5rem .75rem; font: inherit; color: inherit;
+  background-color: #fff; border: 1px solid #ced4da; border-radius: .375rem; }
 .rp-overlay .btn:disabled { pointer-events: none; }
 
 /* Remove confirmation: a small popover box in the middle of the screen */
@@ -132,6 +135,8 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     '.rp-overlay .rp-item.on{background:#e7f1ff}',
     '.rp-overlay .rp-done{cursor:default;opacity:.65}',
     '.rp-overlay .rp-done:hover{background:transparent}',
+    '.rp-overlay .rp-search{padding:.75rem 1rem;border-top:1px solid #dee2e6;background:#f8f9fa}',
+    '.rp-overlay .rp-search input{display:block;width:100%;padding:.5rem .75rem;font:inherit;color:inherit;background:#fff;border:1px solid #ced4da;border-radius:.375rem}',
     '.rp-overlay .rp-item input{flex:none;width:1.125rem;height:1.125rem;margin:.2rem 0 0;-webkit-appearance:none;appearance:none;display:inline-grid;place-content:center;background-color:#fff;border:1px solid #adb5bd;border-radius:.25rem;cursor:pointer;}',
     '.rp-overlay .rp-item input:checked{background-color:#0d6efd;border-color:#0d6efd;}',
     '.rp-overlay .rp-item input:checked::after{content:\"\";width:.35rem;height:.65rem;margin-top:-.15rem;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}',
@@ -152,7 +157,8 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     var title = list.getAttribute('data-title') || 'Select';
 
     var ov = el('div', 'rp-overlay'), head = el('div', 'rp-head'), sub = el('div', 'rp-sub');
-    var body = el('div', 'rp-body'), bar = el('div', 'rp-bar');
+    var body = el('div', 'rp-body'), searchBar = el('div', 'rp-search'), bar = el('div', 'rp-bar');
+    var search = el('input', 'form-control'), empty = el('div', 'rp-empty', 'No matching restrictions.');
     var cancel = el('button', 'btn btn-outline-secondary', 'Cancel'), ok = el('button', 'btn btn-primary', o.okText || 'Save');
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
@@ -162,6 +168,11 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       'flex-direction:column;margin:0;background-color:#fff;';
     body.style.cssText = 'flex:1 1 auto;min-height:0;overflow-y:auto;';
     bar.style.cssText = 'display:flex;gap:.5rem;';
+    search.type = 'search';
+    search.placeholder = 'Search restrictions';
+    search.setAttribute('aria-label', 'Search restrictions by name or description');
+    empty.style.cssText = 'display:none;padding:1rem;color:#6c757d;text-align:center;';
+    searchBar.appendChild(search);
     cancel.style.flex = ok.style.flex = '1';
     cancel.type = ok.type = 'button';
     head.appendChild(el('h5', 'rp-title', title));
@@ -171,14 +182,19 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     ov.appendChild(el('style', null, BASE_CSS));
     ov.appendChild(head);
     ov.appendChild(body);
+    ov.appendChild(searchBar);
     ov.appendChild(bar);
 
     // One tick box (or radio button) per list item
-    var boxes = [];
+    var boxes = [], groups = [], currentGroup = null;
     for (var i = 0; i < list.options.length; i++) {
       var opt = list.options[i];
       if (!opt.value) {                                  // group heading, or a "-- Select --" placeholder
-        if (opt.disabled) body.appendChild(el('div', 'rp-group', opt.text));
+        if (opt.disabled) {
+          currentGroup = { element: el('div', 'rp-group', opt.text) };
+          groups.push(currentGroup);
+          body.appendChild(currentGroup.element);
+        }
         continue;
       }
       var item = el('label', 'rp-item'), cb = el('input'), text = el('div', 'rp-text');
@@ -196,7 +212,26 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       item.appendChild(cb);
       item.appendChild(text);
       body.appendChild(item);
-      boxes.push({ opt: opt, cb: cb, item: item, was: opt.selected });
+      boxes.push({ opt: opt, cb: cb, item: item, group: currentGroup, was: opt.selected });
+    }
+    body.appendChild(empty);
+
+    function filterItems() {
+      var query = String(search.value || '').toLowerCase(), visible = 0;
+      for (var g = 0; g < groups.length; g++) {
+        groups[g].element.style.display = 'none';
+      }
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i], name = b.opt.text == null ? '' : String(b.opt.text);
+        var desc = b.opt.getAttribute('data-desc') || '';
+        var matches = (name + '\n' + desc).toLowerCase().indexOf(query) !== -1;
+        b.item.style.display = matches ? '' : 'none';
+        if (matches) {
+          visible++;
+          if (b.group) b.group.element.style.display = '';
+        }
+      }
+      empty.style.display = visible ? 'none' : '';
     }
 
     function refresh() {
@@ -211,8 +246,8 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       if (multi) sub.textContent = n + ' selected' + (add || rem ? ' · ' + add + ' to add, ' + rem + ' to remove' : '');
       else {
         sub.textContent = chosen ? '1 selected \u00b7 ' + chosen.opt.text : (o.prompt || 'Choose one');
-        if (o.requireChoice) ok.disabled = !chosen;
       }
+      if (o.requireChoice) ok.disabled = !n;
       return chosen;
     }
     function apply() {                      // copy the choice back into the real list
@@ -235,12 +270,14 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
       refresh();
       if (!multi && o.closeOnPick) { apply(); close(); }
     };
+    search.oninput = filterItems;
     cancel.onclick = function () { close(); if (o.onCancel) o.onCancel(); };
     ok.onclick = function () { apply(); close(); if (o.onOk) o.onOk(); };
     ov.onkeydown = function (e) { if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); close(); } };
 
     document.body.appendChild(ov);
     root.style.overflow = 'hidden';         // stop the page scrolling behind the overlay
+    filterItems();
     refresh();
     var first = null;                       // start at the current choice, or the first that can be chosen
     for (var j = 0; j < boxes.length && !first; j++) if (boxes[j].was) first = boxes[j];
@@ -257,7 +294,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     if (!list || !save) return;
     var opener = document.activeElement;
     show(list, {
-      multi: list.multiple, okText: save.value || 'Save', prompt: 'Tick one restriction to add', requireChoice: !list.multiple,
+      multi: list.multiple, okText: save.value || 'Save', prompt: 'Tick one restriction to add', requireChoice: true,
       onOk: function () { save.click(); },
       onClose: function () { if (opener && opener.focus) opener.focus(); }
     });
