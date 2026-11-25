@@ -14,7 +14,7 @@
      and the Save button it clicks --%>
 <asp:ListBox ID="lstRestrictions" runat="server"
     data-title="Restrictions on this route" Style="display:none" />
-<asp:Button ID="btnSaveRestrictions" runat="server" Text="Save" CausesValidation="false"
+<asp:Button ID="btnSaveRestrictions" runat="server" Text="Attach" CausesValidation="false"
     OnClick="btnSaveRestrictions_Click" Style="display:none" />
 
 <div class="grid-box border rounded">

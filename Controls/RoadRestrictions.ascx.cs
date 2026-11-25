@@ -110,6 +110,10 @@ namespace DropdownTests.Controls
 
         protected void gvRestrictions_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
+            var id = (int)gvRestrictions.DataKeys[e.RowIndex].Value;
+            if (id == 0)
+                RouteRestrictions.Detach(id);
+
             gvRestrictions.EditIndex = -1;
             BindGrid();
         }

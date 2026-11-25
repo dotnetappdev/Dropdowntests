@@ -270,7 +270,7 @@ window.RestrictionPicker = window.RestrictionPicker || (function () {
     var update = row && row.querySelector('.gv-update'), cancel = row && row.querySelector('.gv-cancel');
     show(select, {
       multi: false, prompt: 'Choose a restriction',
-      okText: update ? update.textContent : 'Done',
+      okText: update ? update.textContent : 'Attach',
       onOk: function () { if (update) update.click(); },
       onCancel: function () { if (cancel) cancel.click(); },
       onClose: function () { select.focus(); }

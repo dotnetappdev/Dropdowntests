@@ -49,7 +49,7 @@
   </div>
   <select multiple name="RoadRestrictions1$lstRestrictions" id="RoadRestrictions1_lstRestrictions"
     data-title="Restrictions on this route" style="display:none"></select>
-  <input type="submit" name="RoadRestrictions1$btnSaveRestrictions" id="RoadRestrictions1_btnSaveRestrictions" value="Save" style="display:none">
+  <input type="submit" name="RoadRestrictions1$btnSaveRestrictions" id="RoadRestrictions1_btnSaveRestrictions" value="Attach" style="display:none">
   <div class="grid-box border rounded"><table class="table table-striped gv" id="RoadRestrictions1_gvRestrictions"></table></div>
 
   <h3 class="h5 mt-4">Postback log</h3>
@@ -155,7 +155,11 @@ function post(arg) {
   var parts = arg.split("$"), cmd = parts[0], i = +parts[1];
   log("POST " + GV + "  " + arg);
   if (cmd === "Edit") { editIndex = i; log("  RowEditing"); }
-  if (cmd === "Cancel") { editIndex = -1; log("  RowCancelingEdit"); }
+  if (cmd === "Cancel") {
+    if (rows[i] && rows[i].Id === 0) { log("  Discard unsaved empty row"); rows.splice(i, 1); }
+    editIndex = -1;
+    log("  RowCancelingEdit");
+  }
   if (cmd === "Delete") { log("  RowDeleting  Detach " + rows[i].Id + "  " + typeName(rows[i].TypeId)); rows.splice(i, 1); editIndex = -1; }
   if (cmd === "Update") {
     var ddl = document.getElementById("ddlRestriction"), typeId = +ddl.value, notes = document.getElementById("txtNotes").value;
